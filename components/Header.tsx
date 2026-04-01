@@ -4,7 +4,6 @@ import { Search, ShoppingCart, Menu, User, Heart, Phone } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
-import Image from "next/image";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -17,14 +16,7 @@ export default function Header() {
 
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <Image
-              src="/logo.png"
-              alt="Jënd ak Jaay"
-              width={140}
-              height={50}
-              className="h-10 w-auto"
-              priority
-            />
+            <img src="/logo.png" alt="Jënd ak Jaay" className="h-10 w-auto" />
           </Link>
 
           {/* Barre de recherche desktop */}
@@ -36,7 +28,10 @@ export default function Header() {
                 placeholder="Rechercher des produits..."
                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
-              <button className="bg-jaay-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90">
+              <button
+                className="text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90"
+                style={{ background: "oklch(0.35 0.12 145)" }}
+              >
                 Chercher
               </button>
             </div>
@@ -50,7 +45,10 @@ export default function Header() {
             <Link href="/cart" className="relative p-2 rounded-lg hover:bg-accent">
               <ShoppingCart className="h-5 w-5" />
               {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 bg-jaay-orange text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                <span
+                  className="absolute -top-1 -right-1 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center"
+                  style={{ background: "oklch(0.65 0.19 45)" }}
+                >
                   {totalItems > 9 ? "9+" : totalItems}
                 </span>
               )}
@@ -59,10 +57,20 @@ export default function Header() {
               <Phone className="h-4 w-4" />
               +221 78 385 44 65
             </a>
-            <button className="hidden md:flex items-center gap-1 border border-border px-3 py-2 rounded-lg text-sm hover:bg-accent">
+            <Link
+              href="/auth/login"
+              className="hidden md:flex items-center gap-1 border border-border px-3 py-2 rounded-lg text-sm hover:bg-accent"
+            >
               <User className="h-4 w-4" />
               Connexion
-            </button>
+            </Link>
+            <Link
+              href="/seller"
+              className="hidden md:flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium text-white hover:opacity-90 transition"
+              style={{ background: "oklch(0.35 0.12 145)" }}
+            >
+              🏪 Vendre
+            </Link>
             <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               <Menu className="h-5 w-5" />
             </button>
@@ -84,12 +92,15 @@ export default function Header() {
         {/* Menu mobile */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t py-3 space-y-2">
-            <button className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-accent text-sm">
+            <Link href="/auth/login" className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-accent text-sm">
               <User className="h-4 w-4" /> Connexion
-            </button>
+            </Link>
             <button className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-accent text-sm">
               <Heart className="h-4 w-4" /> Favoris
             </button>
+            <Link href="/seller" className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-accent text-sm">
+              🏪 Devenir vendeur
+            </Link>
           </div>
         )}
       </div>
