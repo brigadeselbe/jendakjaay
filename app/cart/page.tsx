@@ -23,7 +23,8 @@ export default function CartPage() {
           <p className="text-muted-foreground max-w-sm">
             Découvrez nos produits et ajoutez-les à votre panier
           </p>
-          <Link href="/" className="bg-jaay-green text-white px-6 py-3 rounded-xl font-medium hover:opacity-90 transition">
+          <Link href="/" className="text-white px-6 py-3 rounded-xl font-medium hover:opacity-90 transition"
+            style={{ background: "oklch(0.35 0.12 145)" }}>
             Continuer mes achats
           </Link>
         </main>
@@ -40,12 +41,16 @@ export default function CartPage() {
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
 
+        {/* Titre */}
         <div className="flex items-center gap-4 mb-8">
           <Link href="/" className="p-2 rounded-lg hover:bg-accent transition">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <h1 className="text-2xl font-bold">Mon Panier</h1>
-          <span className="bg-jaay-orange text-white text-sm font-medium px-2 py-0.5 rounded-full">
+          <span
+            className="text-white text-sm font-medium px-2 py-0.5 rounded-full"
+            style={{ background: "oklch(0.65 0.19 45)" }}
+          >
             {items.length} article{items.length > 1 ? "s" : ""}
           </span>
         </div>
@@ -72,11 +77,13 @@ export default function CartPage() {
                     <Trash2 className="h-4 w-4" />
                   </button>
                   <div className="flex items-center border border-border rounded-lg">
-                    <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="p-1.5 hover:bg-accent transition">
+                    <button onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      className="p-1.5 hover:bg-accent transition">
                       <Minus className="h-3 w-3" />
                     </button>
                     <span className="px-3 text-sm font-medium">{item.quantity}</span>
-                    <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="p-1.5 hover:bg-accent transition">
+                    <button onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      className="p-1.5 hover:bg-accent transition">
                       <Plus className="h-3 w-3" />
                     </button>
                   </div>
@@ -84,7 +91,8 @@ export default function CartPage() {
               </div>
             ))}
 
-            <button onClick={clearCart} className="text-sm text-muted-foreground hover:text-red-500 transition flex items-center gap-1">
+            <button onClick={clearCart}
+              className="text-sm text-muted-foreground hover:text-red-500 transition flex items-center gap-1">
               <Trash2 className="h-4 w-4" />
               Vider le panier
             </button>
@@ -94,6 +102,7 @@ export default function CartPage() {
           <div className="lg:col-span-1">
             <div className="bg-card border border-border rounded-xl p-6 sticky top-24">
               <h2 className="font-bold text-lg mb-4">Résumé</h2>
+
               <div className="space-y-3 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Sous-total</span>
@@ -106,7 +115,9 @@ export default function CartPage() {
                   </span>
                 </div>
                 {livraison > 0 && (
-                  <p className="text-xs text-muted-foreground">Livraison gratuite dès 50 000 FCFA</p>
+                  <p className="text-xs text-muted-foreground">
+                    Livraison gratuite dès 50 000 FCFA
+                  </p>
                 )}
                 <div className="border-t border-border pt-3 flex justify-between font-bold">
                   <span>Total</span>
@@ -114,10 +125,14 @@ export default function CartPage() {
                 </div>
               </div>
 
-              <button className="w-full bg-jaay-green text-white py-3 rounded-xl font-semibold hover:opacity-90 transition flex items-center justify-center gap-2">
+              <Link
+                href="/checkout"
+                className="w-full text-white py-3 rounded-xl font-semibold hover:opacity-90 transition flex items-center justify-center gap-2"
+                style={{ background: "oklch(0.35 0.12 145)" }}
+              >
                 <ShoppingBag className="h-5 w-5" />
                 Commander maintenant
-              </button>
+              </Link>
 
               <div className="mt-4 space-y-2">
                 <p className="text-xs text-center text-muted-foreground">Paiement sécurisé</p>
