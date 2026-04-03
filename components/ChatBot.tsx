@@ -31,13 +31,10 @@ export default function ChatBot() {
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setLoading(true);
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: `Tu es l'assistant virtuel de Jënd ak Jaay, la marketplace sénégalaise. Tu parles français et tu comprends le wolof. Tu aides les acheteurs à trouver des produits, tu expliques comment passer une commande, comment payer avec Wave ou Orange Money. Tu aides aussi les vendeurs à publier leurs produits. Tu es chaleureux, amical et tu utilises parfois des expressions sénégalaises. Les produits disponibles incluent: vêtements traditionnels (boubous, caftans), alimentation (thiéboudienne, yassa, bissap), électronique, artisanat, meubles. Le site accepte Wave, Orange Money et Free Money comme paiement. Réponds de manière courte et utile, maximum 3-4 phrases.`,
           messages: messages.concat({ role: "user", content: userMessage }).map((m) => ({
             role: m.role,
             content: m.content,

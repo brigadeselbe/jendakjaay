@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Package, Eye, Trash2, Store } from "lucide-react";
+import { Plus, Package, Eye, Trash2 } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -53,19 +53,27 @@ export default function SellerDashboard() {
       <main className="flex-1 container mx-auto px-4 py-8">
 
         {/* Header dashboard */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold">Mon Tableau de Bord</h1>
             <p className="text-muted-foreground text-sm">Gérez vos produits et ventes</p>
           </div>
-          <Link
-            href="/seller/add-product"
-            className="flex items-center gap-2 text-white px-4 py-2 rounded-xl font-medium hover:opacity-90 transition"
-            style={{ background: "oklch(0.35 0.12 145)" }}
-          >
-            <Plus className="h-5 w-5" />
-            Ajouter un produit
-          </Link>
+          <div className="flex gap-3">
+            <Link
+              href="/seller/orders"
+              className="flex items-center gap-2 border border-border px-4 py-2 rounded-xl font-medium hover:bg-accent transition text-sm"
+            >
+              📦 Voir les commandes
+            </Link>
+            <Link
+              href="/seller/add-product"
+              className="flex items-center gap-2 text-white px-4 py-2 rounded-xl font-medium hover:opacity-90 transition text-sm"
+              style={{ background: "oklch(0.35 0.12 145)" }}
+            >
+              <Plus className="h-5 w-5" />
+              Ajouter un produit
+            </Link>
+          </div>
         </div>
 
         {/* Stats */}
@@ -82,6 +90,43 @@ export default function SellerDashboard() {
               <div className="text-xs text-muted-foreground">{stat.label}</div>
             </div>
           ))}
+        </div>
+
+        {/* Liens rapides */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <Link href="/seller/add-product"
+            className="flex items-center gap-3 bg-card border border-border rounded-xl p-4 hover:shadow-md transition">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xl"
+              style={{ background: "oklch(0.35 0.12 145)" }}>
+              ➕
+            </div>
+            <div>
+              <p className="font-semibold text-sm">Ajouter un produit</p>
+              <p className="text-xs text-muted-foreground">Publier avec IA</p>
+            </div>
+          </Link>
+          <Link href="/seller/orders"
+            className="flex items-center gap-3 bg-card border border-border rounded-xl p-4 hover:shadow-md transition">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xl"
+              style={{ background: "oklch(0.65 0.19 45)" }}>
+              📦
+            </div>
+            <div>
+              <p className="font-semibold text-sm">Commandes reçues</p>
+              <p className="text-xs text-muted-foreground">Gérer les commandes</p>
+            </div>
+          </Link>
+          <Link href="/seller"
+            className="flex items-center gap-3 bg-card border border-border rounded-xl p-4 hover:shadow-md transition">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xl"
+              style={{ background: "#25D366" }}>
+              💬
+            </div>
+            <div>
+              <p className="font-semibold text-sm">Mon profil vendeur</p>
+              <p className="text-xs text-muted-foreground">Modifier ma boutique</p>
+            </div>
+          </Link>
         </div>
 
         {/* Liste produits */}
