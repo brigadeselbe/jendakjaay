@@ -1,15 +1,23 @@
 "use client";
 
 const categories = [
+  { name: "Tous", emoji: "🏪" },
   { name: "Alimentation", emoji: "🍚" },
+  { name: "Mode & Vêtements", emoji: "👗" },
   { name: "Électronique", emoji: "📱" },
-  { name: "Mode", emoji: "👗" },
   { name: "Artisanat", emoji: "🧺" },
-  { name: "Maison", emoji: "🏠" },
-  { name: "Général", emoji: "📦" },
+  { name: "Maison & Déco", emoji: "🏠" },
+  { name: "Beauté & Santé", emoji: "💄" },
+  { name: "Agriculture", emoji: "🌿" },
+  { name: "Services", emoji: "🛠️" },
 ];
 
-export default function CategoryNav() {
+interface CategoryNavProps {
+  selected: string;
+  onSelect: (category: string) => void;
+}
+
+export default function CategoryNav({ selected, onSelect }: CategoryNavProps) {
   return (
     <div className="border-b bg-muted/30">
       <div className="container mx-auto px-4">
@@ -17,7 +25,12 @@ export default function CategoryNav() {
           {categories.map((cat) => (
             <button
               key={cat.name}
-              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent transition-colors"
+              onClick={() => onSelect(cat.name)}
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                background: selected === cat.name ? "oklch(0.35 0.12 145)" : "",
+                color: selected === cat.name ? "white" : "",
+              }}
             >
               <span>{cat.emoji}</span>
               {cat.name}
