@@ -8,6 +8,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart } from "@/contexts/CartContext";
 import { createClient } from "@/lib/supabase/client";
+import OrderNotification from "@/components/OrderNotification";
 
 const regions = [
   "Dakar", "Thiès", "Saint-Louis", "Diourbel", "Louga",
@@ -94,8 +95,8 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 flex items-center justify-center px-4">
-          <div className="text-center max-w-md">
+        <main className="flex-1 flex items-center justify-center px-4 py-12">
+          <div className="text-center max-w-md w-full">
             <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-white"
               style={{ background: "oklch(0.35 0.12 145)" }}>
               <Check className="h-10 w-10" />
@@ -105,13 +106,32 @@ export default function CheckoutPage() {
               Votre commande a été reçue avec succès.
             </p>
             <p className="text-sm text-muted-foreground mb-6">
-              Numéro de commande : <span className="font-mono font-medium">{orderId.slice(0, 8).toUpperCase()}</span>
+              Numéro : <span className="font-mono font-medium">{orderId.slice(0, 8).toUpperCase()}</span>
             </p>
 
+            {/* Infos commande */}
             <div className="bg-muted rounded-xl p-4 mb-6 text-sm text-left space-y-2">
               <p>📱 Vous serez contacté sur <strong>{form.buyer_phone}</strong></p>
               <p>📍 Livraison à <strong>{form.buyer_address}, {form.buyer_region}</strong></p>
               <p>💳 Paiement par <strong>{form.payment_method === "wave" ? "Wave" : form.payment_method === "orange" ? "Orange Money" : "Free Money"}</strong></p>
+            </div>
+
+            {/* Notifications WhatsApp */}
+            <div className="mb-6">
+              <p className="text-sm font-medium mb-3">Envoyer les notifications :</p>
+              <OrderNotification
+                order={{
+                  buyer_name: form.buyer_name,
+                  buyer_phone: form.buyer_phone,
+                  buyer_region: form.buyer_region,
+                  buyer_address: form.buyer_address,
+                  items: items.length > 0 ? items : [{ name: "Produit commandé", quantity: 1, price: total, emoji: "📦" }],
+                  total_price: total,
+                  payment_method: form.payment_method,
+                }}
+                sellerPhone="221783854465"
+                sellerName="Jënd ak Jaay"
+              />
             </div>
 
             <Link href="/" className="inline-block text-white px-8 py-3 rounded-xl font-semibold hover:opacity-90 transition"
@@ -195,11 +215,13 @@ export default function CheckoutPage() {
                   { value: "orange", label: "Orange Money", emoji: "🟠" },
                   { value: "free", label: "Free Money", emoji: "🔵" },
                 ].map((method) => (
-                  <button
-                    key={method.value}
+                  <button key={method.value}
                     onClick={() => setForm({ ...form, payment_method: method.value })}
-                    className={`p-3 rounded-xl border-2 text-center transition ${form.payment_method === method.value ? "border-jaay-green bg-jaay-green-light" : "border-border hover:bg-accent"}`}
-                  >
+                    className="p-3 rounded-xl border-2 text-center transition"
+                    style={{
+                      borderColor: form.payment_method === method.value ? "oklch(0.35 0.12 145)" : "",
+                      background: form.payment_method === method.value ? "oklch(0.92 0.06 145)" : "",
+                    }}>
                     <div className="text-2xl mb-1">{method.emoji}</div>
                     <div className="text-xs font-medium">{method.label}</div>
                   </button>
@@ -243,12 +265,9 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
+              <button onClick={handleSubmit} disabled={loading}
                 className="w-full mt-6 py-3 rounded-xl font-semibold text-white flex items-center justify-center gap-2 hover:opacity-90 transition disabled:opacity-50"
-                style={{ background: "oklch(0.35 0.12 145)" }}
-              >
+                style={{ background: "oklch(0.35 0.12 145)" }}>
                 <ShoppingBag className="h-5 w-5" />
                 {loading ? "Commande en cours..." : "Confirmer la commande"}
               </button>
