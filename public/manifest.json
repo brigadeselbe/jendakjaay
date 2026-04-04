@@ -1,0 +1,26 @@
+{
+  "name": "Jënd ak Jaay - Marketplace Sénégalaise",
+  "short_name": "Jënd ak Jaay",
+  "description": "La marketplace sénégalaise qui connecte vendeurs et acheteurs",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a5c2a",
+  "orientation": "portrait-primary",
+  "lang": "fr",
+  "categories": ["shopping", "business"],
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
