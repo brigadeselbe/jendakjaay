@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Heart, ShoppingCart, Star, ArrowLeft, Share2, Shield, Truck, RotateCcw } from "lucide-react";
 import Link from "next/link";
@@ -8,150 +8,191 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart } from "@/contexts/CartContext";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { createClient } from "@/lib/supabase/client";
 
-const products = [
-  {
-    id: 1,
-    name: "Boubou Traditionnel",
-    price: 25000,
-    originalPrice: 35000,
-    rating: 4.5,
-    reviews: 12,
-    seller: "Amadou Diallo",
-    location: "Dakar",
-    category: "Mode",
-    emoji: "👘",
-    badge: "Populaire",
-    description: "Magnifique boubou traditionnel sénégalais, confectionné à la main avec du tissu bazin de haute qualité. Disponible en plusieurs couleurs. Idéal pour les cérémonies et fêtes.",
-    specs: ["Tissu: Bazin riche", "Fait main", "Disponible en S, M, L, XL", "Livraison sous 48h"],
-  },
-  {
-    id: 2,
-    name: "Thiéboudienne Familiale",
-    price: 8500,
-    originalPrice: null,
-    rating: 5,
-    reviews: 34,
-    seller: "Fatou Ndiaye",
-    location: "Thiès",
-    category: "Alimentation",
-    emoji: "🍚",
-    badge: "Top Vendeur",
-    description: "Thiéboudienne préparée avec du riz local et du poisson frais. Portion familiale pour 4 à 6 personnes.",
-    specs: ["Pour 4-6 personnes", "Poisson frais", "Riz local", "Livraison le jour même"],
-  },
-  {
-    id: 3,
-    name: "Smartphone Samsung A15",
-    price: 120000,
-    originalPrice: 145000,
-    rating: 4,
-    reviews: 8,
-    seller: "Tech Dakar",
-    location: "Dakar",
-    category: "Électronique",
-    emoji: "📱",
-    badge: "Promo",
-    description: "Samsung Galaxy A15 neuf, sous emballage d'origine. 4GB RAM, 128GB stockage. Garantie 1 an.",
-    specs: ["Écran 6.5 pouces", "4GB RAM / 128GB", "Batterie 5000mAh", "Garantie 1 an"],
-  },
-  {
-    id: 4,
-    name: "Panier Tressé Artisanal",
-    price: 5500,
-    originalPrice: null,
-    rating: 4.8,
-    reviews: 21,
-    seller: "Mariama Sow",
-    location: "Saint-Louis",
-    category: "Artisanat",
-    emoji: "🧺",
-    badge: null,
-    description: "Panier tressé à la main par des artisanes de Saint-Louis. Matériaux naturels, durable et écologique.",
-    specs: ["Fait main", "Matériaux naturels", "Diamètre 40cm", "Artisanat local"],
-  },
-  {
-    id: 5,
-    name: "Huile de Palme Bio",
-    price: 3200,
-    originalPrice: null,
-    rating: 4.6,
-    reviews: 45,
-    seller: "Biosenegal",
-    location: "Ziguinchor",
-    category: "Alimentation",
-    emoji: "🫙",
-    badge: "Bio",
-    description: "Huile de palme 100% biologique, extraite à froid. Certifiée sans pesticides. 1 litre.",
-    specs: ["100% Bio", "Extraite à froid", "1 litre", "Sans pesticides"],
-  },
-  {
-    id: 6,
-    name: "Canapé 3 Places",
-    price: 185000,
-    originalPrice: 220000,
-    rating: 4.2,
-    reviews: 6,
-    seller: "Meubles Dakar",
-    location: "Dakar",
-    category: "Maison",
-    emoji: "🛋️",
-    badge: "Promo",
-    description: "Canapé 3 places en tissu de qualité, structure en bois massif. Livraison et montage inclus à Dakar.",
-    specs: ["3 places", "Bois massif", "Livraison incluse", "3 coloris disponibles"],
-  },
-];
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  original_price: number | null;
+  rating: number;
+  reviews_count: number;
+  seller_name: string;
+  seller_location: string;
+  category: string;
+  emoji: string;
+  badge: string | null;
+  image_url: string | null;
+  description: string | null;
+}
+
+interface Review {
+  id: string;
+  buyer_name: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
 
 function formatPrice(price: number) {
   return price.toLocaleString("fr-SN") + " FCFA";
 }
 
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString("fr-SN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default function ProductDetail() {
   const params = useParams();
-  const product = products.find((p) => p.id === Number(params.id)) || products[0];
   const { addItem } = useCart();
 
+  const [product, setProduct] = useState<Product | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [favorite, setFavorite] = useState(false);
   const [added, setAdded] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [newReview, setNewReview] = useState({
+    buyer_name: "",
+    rating: 5,
+    comment: "",
+  });
+
+  useEffect(() => {
+    loadProduct();
+    loadReviews();
+  }, [params.id]);
+
+  async function loadProduct() {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", params.id)
+      .single();
+    if (data) setProduct(data);
+    setLoading(false);
+  }
+
+  async function loadReviews() {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("reviews")
+      .select("*")
+      .eq("product_id", params.id)
+      .order("created_at", { ascending: false });
+    if (data) setReviews(data);
+  }
+
+  async function submitReview() {
+    if (!newReview.buyer_name || !newReview.comment) {
+      alert("Veuillez remplir tous les champs !");
+      return;
+    }
+    setReviewLoading(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("reviews").insert([{
+        product_id: params.id,
+        buyer_name: newReview.buyer_name,
+        rating: newReview.rating,
+        comment: newReview.comment,
+      }]);
+      if (error) throw error;
+      setNewReview({ buyer_name: "", rating: 5, comment: "" });
+      setShowReviewForm(false);
+      loadReviews();
+    } catch {
+      alert("Erreur lors de l'envoi. Réessayez !");
+    } finally {
+      setReviewLoading(false);
+    }
+  }
 
   function handleAddToCart() {
+    if (!product) return;
     addItem({
-      id: product.id,
+      id: Number(product.id),
       name: product.name,
       price: product.price,
       emoji: product.emoji,
-      seller: product.seller,
+      seller: product.seller_name,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   }
 
-  const discount = product.originalPrice
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div className="bg-muted rounded-2xl h-80 animate-pulse" />
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="bg-muted rounded-xl h-10 animate-pulse" />
+              ))}
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-4xl mb-4">😕</div>
+            <h2 className="text-xl font-bold mb-2">Produit introuvable</h2>
+            <Link href="/" className="text-jaay-green hover:underline">Retour à l&apos;accueil</Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const discount = product.original_price
+    ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
     : null;
+
+  const avgRating = reviews.length > 0
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+    : product.rating;
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
 
-        {/* Retour */}
         <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6 transition-colors">
           <ArrowLeft className="h-4 w-4" />
           Retour aux produits
         </Link>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-12">
 
-          {/* Image produit */}
-          <div className="relative bg-muted rounded-2xl flex items-center justify-center h-80 md:h-full min-h-[320px] text-9xl">
-            {product.emoji}
+          {/* Image */}
+          <div className="relative bg-muted rounded-2xl flex items-center justify-center h-80 md:h-full min-h-[320px] overflow-hidden">
+            {product.image_url ? (
+              <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-9xl">{product.emoji}</span>
+            )}
             {product.badge && (
-              <span
-                className="absolute top-4 left-4 text-white text-sm font-semibold px-3 py-1 rounded-full"
-                style={{ background: "oklch(0.65 0.19 45)" }}
-              >
+              <span className="absolute top-4 left-4 text-white text-sm font-semibold px-3 py-1 rounded-full"
+                style={{ background: "oklch(0.65 0.19 45)" }}>
                 {product.badge}
               </span>
             )}
@@ -162,7 +203,7 @@ export default function ProductDetail() {
             )}
           </div>
 
-          {/* Infos produit */}
+          {/* Infos */}
           <div>
             <span className="text-sm text-muted-foreground bg-muted px-3 py-1 rounded-full">
               {product.category}
@@ -174,59 +215,37 @@ export default function ProductDetail() {
             <div className="flex items-center gap-2 mb-4">
               <div className="flex items-center gap-1">
                 {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className="h-4 w-4"
-                    fill={i < Math.floor(product.rating) ? "oklch(0.65 0.19 45)" : "none"}
-                    stroke="oklch(0.65 0.19 45)"
-                  />
+                  <Star key={i} className="h-4 w-4"
+                    fill={i < Math.floor(avgRating) ? "oklch(0.65 0.19 45)" : "none"}
+                    stroke="oklch(0.65 0.19 45)" />
                 ))}
               </div>
-              <span className="text-sm font-medium">{product.rating}</span>
-              <span className="text-sm text-muted-foreground">({product.reviews} avis)</span>
+              <span className="text-sm font-medium">{avgRating.toFixed(1)}</span>
+              <span className="text-sm text-muted-foreground">({reviews.length} avis)</span>
             </div>
 
             {/* Prix */}
             <div className="flex items-center gap-3 mb-6">
-              <span className="text-3xl font-bold text-jaay-green">
-                {formatPrice(product.price)}
-              </span>
-              {product.originalPrice && (
-                <span className="text-lg text-muted-foreground line-through">
-                  {formatPrice(product.originalPrice)}
-                </span>
+              <span className="text-3xl font-bold text-jaay-green">{formatPrice(product.price)}</span>
+              {product.original_price && (
+                <span className="text-lg text-muted-foreground line-through">{formatPrice(product.original_price)}</span>
               )}
             </div>
 
             {/* Description */}
-            <p className="text-muted-foreground mb-6 leading-relaxed">
-              {product.description}
-            </p>
-
-            {/* Specs */}
-            <div className="mb-6">
-              <h3 className="font-semibold mb-3">Caractéristiques</h3>
-              <ul className="space-y-2">
-                {product.specs.map((spec) => (
-                  <li key={spec} className="flex items-center gap-2 text-sm">
-                    <span className="text-jaay-green font-bold">✓</span>
-                    {spec}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {product.description && (
+              <p className="text-muted-foreground mb-6 leading-relaxed">{product.description}</p>
+            )}
 
             {/* Vendeur */}
             <div className="flex items-center gap-3 p-4 bg-muted rounded-xl mb-6">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                style={{ background: "oklch(0.35 0.12 145)" }}
-              >
-                {product.seller[0]}
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                style={{ background: "oklch(0.35 0.12 145)" }}>
+                {product.seller_name[0]}
               </div>
               <div>
-                <p className="font-medium text-sm">{product.seller}</p>
-                <p className="text-xs text-muted-foreground">📍 {product.location}</p>
+                <p className="font-medium text-sm">{product.seller_name}</p>
+                <p className="text-xs text-muted-foreground">📍 {product.seller_location}</p>
               </div>
             </div>
 
@@ -234,37 +253,27 @@ export default function ProductDetail() {
             <div className="flex items-center gap-4 mb-6">
               <span className="text-sm font-medium">Quantité :</span>
               <div className="flex items-center border border-border rounded-lg">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-3 py-2 hover:bg-accent transition-colors"
-                >−</button>
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="px-3 py-2 hover:bg-accent transition-colors">−</button>
                 <span className="px-4 py-2 font-medium">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="px-3 py-2 hover:bg-accent transition-colors"
-                >+</button>
+                <button onClick={() => setQuantity(quantity + 1)}
+                  className="px-3 py-2 hover:bg-accent transition-colors">+</button>
               </div>
             </div>
 
             {/* Boutons */}
             <div className="flex gap-3 mb-4">
-              <button
-                onClick={handleAddToCart}
+              <button onClick={handleAddToCart}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-white transition-all"
-                style={{ background: "oklch(0.35 0.12 145)", opacity: added ? 0.85 : 1 }}
-              >
+                style={{ background: "oklch(0.35 0.12 145)", opacity: added ? 0.85 : 1 }}>
                 <ShoppingCart className="h-5 w-5" />
                 {added ? "✓ Ajouté !" : "Ajouter au panier"}
               </button>
-              <button
-                onClick={() => setFavorite(!favorite)}
-                className="p-3 border border-border rounded-xl hover:bg-accent transition-colors"
-              >
-                <Heart
-                  className="h-5 w-5"
+              <button onClick={() => setFavorite(!favorite)}
+                className="p-3 border border-border rounded-xl hover:bg-accent transition-colors">
+                <Heart className="h-5 w-5"
                   fill={favorite ? "red" : "none"}
-                  stroke={favorite ? "red" : "currentColor"}
-                />
+                  stroke={favorite ? "red" : "currentColor"} />
               </button>
               <button className="p-3 border border-border rounded-xl hover:bg-accent transition-colors">
                 <Share2 className="h-5 w-5" />
@@ -273,11 +282,7 @@ export default function ProductDetail() {
 
             {/* WhatsApp */}
             <div className="mb-6">
-              <WhatsAppButton
-                productName={product.name}
-                price={product.price}
-                phone="221783854465"
-              />
+              <WhatsAppButton productName={product.name} price={product.price} phone="221783854465" />
             </div>
 
             {/* Garanties */}
@@ -294,6 +299,123 @@ export default function ProductDetail() {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Section Avis */}
+        <div className="border-t pt-12">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-2xl font-bold mb-1">Avis clients</h2>
+              <p className="text-muted-foreground text-sm">{reviews.length} avis pour ce produit</p>
+            </div>
+            <button
+              onClick={() => setShowReviewForm(!showReviewForm)}
+              className="flex items-center gap-2 text-white px-4 py-2 rounded-xl font-medium hover:opacity-90 transition text-sm"
+              style={{ background: "oklch(0.35 0.12 145)" }}
+            >
+              ✍️ Laisser un avis
+            </button>
+          </div>
+
+          {/* Formulaire avis */}
+          {showReviewForm && (
+            <div className="bg-card border border-border rounded-2xl p-6 mb-8 space-y-4">
+              <h3 className="font-semibold">Votre avis</h3>
+
+              <div>
+                <label className="text-sm font-medium mb-1 block">Votre nom *</label>
+                <input
+                  value={newReview.buyer_name}
+                  onChange={(e) => setNewReview({ ...newReview, buyer_name: e.target.value })}
+                  placeholder="Ex: Aminata D."
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Note *</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setNewReview({ ...newReview, rating: star })}
+                      className="text-3xl transition-transform hover:scale-110"
+                    >
+                      <Star
+                        className="h-8 w-8"
+                        fill={star <= newReview.rating ? "oklch(0.65 0.19 45)" : "none"}
+                        stroke="oklch(0.65 0.19 45)"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1 block">Commentaire *</label>
+                <textarea
+                  value={newReview.comment}
+                  onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+                  placeholder="Partagez votre expérience avec ce produit..."
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={submitReview}
+                  disabled={reviewLoading}
+                  className="flex-1 py-3 rounded-xl font-semibold text-white hover:opacity-90 transition disabled:opacity-50"
+                  style={{ background: "oklch(0.35 0.12 145)" }}
+                >
+                  {reviewLoading ? "Envoi..." : "Publier mon avis 🚀"}
+                </button>
+                <button
+                  onClick={() => setShowReviewForm(false)}
+                  className="px-6 py-3 rounded-xl border border-border hover:bg-accent transition"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Liste avis */}
+          {reviews.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-3">💬</div>
+              <p className="font-medium mb-1">Aucun avis pour le moment</p>
+              <p className="text-sm text-muted-foreground">Soyez le premier à laisser un avis !</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {reviews.map((review) => (
+                <div key={review.id} className="bg-card border border-border rounded-xl p-5">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                        style={{ background: "oklch(0.35 0.12 145)" }}>
+                        {review.buyer_name[0]}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">{review.buyer_name}</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(review.created_at)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-4 w-4"
+                          fill={i < review.rating ? "oklch(0.65 0.19 45)" : "none"}
+                          stroke="oklch(0.65 0.19 45)" />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{review.comment}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
       <Footer />
