@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Package, Eye, Trash2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Eye, Trash2 } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -22,29 +22,48 @@ function formatPrice(price: number) {
   return price.toLocaleString("fr-SN") + " FCFA";
 }
 
-export default function SellerDashboard() {
+export default function SellerDashboard(): JSX.Element {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadProducts();
-  }, []);
+    let mounted = true;
 
-  async function loadProducts() {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("products")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (data) setProducts(data);
-    setLoading(false);
-  }
+    async function fetchProducts() {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from<Product>("products")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        if (!mounted) return;
+        setProducts(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("loadProducts error", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    fetchProducts();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   async function deleteProduct(id: string) {
     if (!confirm("Supprimer ce produit ?")) return;
-    const supabase = createClient();
-    await supabase.from("products").delete().eq("id", id);
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("products").delete().eq("id", id);
+      if (error) throw error;
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      console.error("deleteProduct error", err);
+      alert("Impossible de supprimer le produit. Réessayez.");
+    }
   }
 
   return (

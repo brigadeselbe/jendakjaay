@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Heart, ShoppingCart, Star, ArrowLeft, Share2, Shield, Truck, RotateCcw } from "lucide-react";
 import Link from "next/link";
@@ -48,6 +48,7 @@ function formatDate(date: string) {
 
 export default function ProductDetail() {
   const params = useParams();
+  const productId = params?.id ?? null;
   const { addItem } = useCart();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -65,32 +66,51 @@ export default function ProductDetail() {
   });
 
   useEffect(() => {
+    if (!productId) return;
     loadProduct();
     loadReviews();
-  }, [params.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId]);
 
   async function loadProduct() {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("products")
-      .select("*")
-      .eq("id", params.id)
-      .single();
-    if (data) setProduct(data);
-    setLoading(false);
+    if (!productId) return;
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from<Product>("products")
+        .select("*")
+        .eq("id", productId)
+        .single();
+
+      if (error) throw error;
+      if (data) setProduct(data);
+    } catch (err) {
+      console.error("loadProduct error", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadReviews() {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("reviews")
-      .select("*")
-      .eq("product_id", params.id)
-      .order("created_at", { ascending: false });
-    if (data) setReviews(data);
+    if (!productId) return;
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from<Review>("reviews")
+        .select("*")
+        .eq("product_id", productId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      if (data) setReviews(data);
+    } catch (err) {
+      console.error("loadReviews error", err);
+    }
   }
 
   async function submitReview() {
+    if (!productId) return;
     if (!newReview.buyer_name || !newReview.comment) {
       alert("Veuillez remplir tous les champs !");
       return;
@@ -99,16 +119,18 @@ export default function ProductDetail() {
     try {
       const supabase = createClient();
       const { error } = await supabase.from("reviews").insert([{
-        product_id: params.id,
+        product_id: productId,
         buyer_name: newReview.buyer_name,
         rating: newReview.rating,
         comment: newReview.comment,
       }]);
+
       if (error) throw error;
       setNewReview({ buyer_name: "", rating: 5, comment: "" });
       setShowReviewForm(false);
-      loadReviews();
-    } catch {
+      await loadReviews();
+    } catch (err) {
+      console.error("submitReview error", err);
       alert("Erreur lors de l'envoi. Réessayez !");
     } finally {
       setReviewLoading(false);
@@ -118,11 +140,12 @@ export default function ProductDetail() {
   function handleAddToCart() {
     if (!product) return;
     addItem({
-      id: Number(product.id),
+      id: product.id, // keep id as string to avoid NaN issues
       name: product.name,
       price: product.price,
       emoji: product.emoji,
       seller: product.seller_name,
+      quantity,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
@@ -186,6 +209,7 @@ export default function ProductDetail() {
           {/* Image */}
           <div className="relative bg-muted rounded-2xl flex items-center justify-center h-80 md:h-full min-h-[320px] overflow-hidden">
             {product.image_url ? (
+              // use plain img; Next/Image could be used instead if configured
               <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
             ) : (
               <span className="text-9xl">{product.emoji}</span>
@@ -340,6 +364,7 @@ export default function ProductDetail() {
                       key={star}
                       onClick={() => setNewReview({ ...newReview, rating: star })}
                       className="text-3xl transition-transform hover:scale-110"
+                      type="button"
                     >
                       <Star
                         className="h-8 w-8"
@@ -374,6 +399,7 @@ export default function ProductDetail() {
                 <button
                   onClick={() => setShowReviewForm(false)}
                   className="px-6 py-3 rounded-xl border border-border hover:bg-accent transition"
+                  type="button"
                 >
                   Annuler
                 </button>

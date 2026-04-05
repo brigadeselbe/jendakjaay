@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ShoppingBag, Check } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import OrderNotification from "@/components/OrderNotification";
 import { useCart } from "@/contexts/CartContext";
 import { createClient } from "@/lib/supabase/client";
-import OrderNotification from "@/components/OrderNotification";
 
 const regions = [
   "Dakar", "Thiès", "Saint-Louis", "Diourbel", "Louga",
@@ -67,7 +67,8 @@ export default function CheckoutPage() {
       setOrderId(data.id);
       clearCart();
       setSuccess(true);
-    } catch {
+    } catch (err) {
+      console.error("handleSubmit error", err);
       alert("Erreur lors de la commande. Réessayez !");
     } finally {
       setLoading(false);
@@ -106,17 +107,15 @@ export default function CheckoutPage() {
               Votre commande a été reçue avec succès.
             </p>
             <p className="text-sm text-muted-foreground mb-6">
-              Numéro : <span className="font-mono font-medium">{orderId.slice(0, 8).toUpperCase()}</span>
+              Numéro : <span className="font-mono font-medium">{orderId ? orderId.slice(0, 8).toUpperCase() : "—"}</span>
             </p>
 
-            {/* Infos commande */}
             <div className="bg-muted rounded-xl p-4 mb-6 text-sm text-left space-y-2">
               <p>📱 Vous serez contacté sur <strong>{form.buyer_phone}</strong></p>
               <p>📍 Livraison à <strong>{form.buyer_address}, {form.buyer_region}</strong></p>
               <p>💳 Paiement par <strong>{form.payment_method === "wave" ? "Wave" : form.payment_method === "orange" ? "Orange Money" : "Free Money"}</strong></p>
             </div>
 
-            {/* Notifications WhatsApp */}
             <div className="mb-6">
               <p className="text-sm font-medium mb-3">Envoyer les notifications :</p>
               <OrderNotification
@@ -159,10 +158,7 @@ export default function CheckoutPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-          {/* Formulaire */}
           <div className="lg:col-span-2 space-y-6">
-
-            {/* Infos livraison */}
             <div className="bg-card border border-border rounded-xl p-6 space-y-4">
               <h2 className="font-semibold">📍 Informations de livraison</h2>
 
@@ -206,7 +202,6 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Paiement */}
             <div className="bg-card border border-border rounded-xl p-6 space-y-4">
               <h2 className="font-semibold">💳 Mode de paiement</h2>
               <div className="grid grid-cols-3 gap-3">
@@ -216,6 +211,7 @@ export default function CheckoutPage() {
                   { value: "free", label: "Free Money", emoji: "🔵" },
                 ].map((method) => (
                   <button key={method.value}
+                    type="button"
                     onClick={() => setForm({ ...form, payment_method: method.value })}
                     className="p-3 rounded-xl border-2 text-center transition"
                     style={{
@@ -230,7 +226,6 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Résumé */}
           <div className="lg:col-span-1">
             <div className="bg-card border border-border rounded-xl p-6 sticky top-24">
               <h2 className="font-bold text-lg mb-4">Résumé</h2>

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Package, ShoppingBag, TrendingUp, Eye, Trash2, Check, X } from "lucide-react";
+import { Eye, Trash2, Check, X } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
 
 interface Product {
@@ -65,24 +66,39 @@ export default function AdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [sellers, setSellers] = useState<Seller[]>([]);
+  const [stats, setStats] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    let mounted = true;
 
-  async function loadData() {
-    const supabase = createClient();
-    const [p, o, s] = await Promise.all([
-      supabase.from("products").select("*").order("created_at", { ascending: false }),
-      supabase.from("orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("sellers").select("*").order("created_at", { ascending: false }),
-    ]);
-    if (p.data) setProducts(p.data);
-    if (o.data) setOrders(o.data);
-    if (s.data) setSellers(s.data);
-    setLoading(false);
-  }
+    async function fetchData() {
+      try {
+        const supabase = createClient();
+        const [p, o, se, st] = await Promise.all([
+          supabase.from("products").select("*"),
+          supabase.from("orders").select("*"),
+          supabase.from("sellers").select("*"),
+          supabase.from("stats").select("*"),
+        ]);
+
+        if (!mounted) return;
+        if (p?.data) setProducts(p.data as Product[]);
+        if (o?.data) setOrders(o.data as Order[]);
+        if (se?.data) setSellers(se.data as Seller[]);
+        if (st?.data) setStats(st.data[0] ?? {});
+      } catch (err) {
+        console.error("fetchData error", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    fetchData();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   async function deleteProduct(id: string) {
     if (!confirm("Supprimer ce produit ?")) return;
@@ -94,18 +110,16 @@ export default function AdminPage() {
   async function verifySeller(id: string, verified: boolean) {
     const supabase = createClient();
     await supabase.from("sellers").update({ verified }).eq("id", id);
-    setSellers((prev) => prev.map((s) => s.id === id ? { ...s, verified } : s));
+    setSellers((prev) => prev.map((s) => (s.id === id ? { ...s, verified } : s)));
   }
 
   async function updateOrderStatus(id: string, status: string) {
     const supabase = createClient();
     await supabase.from("orders").update({ status }).eq("id", id);
-    setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
+    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
   }
 
-  const totalRevenue = orders
-    .filter((o) => o.status === "livre")
-    .reduce((sum, o) => sum + o.total_price, 0);
+  const totalRevenue = orders.filter((o) => o.status === "livre").reduce((sum, o) => sum + o.total_price, 0);
 
   const tabs = [
     { id: "overview", label: "Vue d'ensemble", emoji: "📊" },
@@ -118,16 +132,13 @@ export default function AdminPage() {
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
-
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold">Tableau de Bord Admin</h1>
             <p className="text-muted-foreground text-sm">Gérez tout Jënd ak Jaay</p>
           </div>
-          <span className="bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full">
-            ADMIN
-          </span>
+          <span className="bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full">ADMIN</span>
         </div>
 
         {/* Tabs */}
@@ -184,7 +195,7 @@ export default function AdminPage() {
                         <div className="text-right">
                           <p className="font-bold text-jaay-green text-sm">{formatPrice(order.total_price)}</p>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${statusConfig[order.status]?.bg} ${statusConfig[order.status]?.color}`}>
-                            {statusConfig[order.status]?.label}
+                            {statusConfig[order.status]?.label ?? order.status}
                           </span>
                         </div>
                       </div>
@@ -199,18 +210,14 @@ export default function AdminPage() {
               <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="p-4 border-b flex items-center justify-between">
                   <h2 className="font-semibold">{products.length} produits</h2>
-                  <Link href="/seller/add-product"
-                    className="text-xs text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition"
-                    style={{ background: "oklch(0.35 0.12 145)" }}>
+                  <Link href="/seller/add-product" className="text-xs text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition" style={{ background: "oklch(0.35 0.12 145)" }}>
                     + Ajouter
                   </Link>
                 </div>
                 <div className="divide-y">
                   {products.map((product) => (
                     <div key={product.id} className="p-4 flex items-center gap-4">
-                      <div className="w-10 h-10 bg-muted rounded-xl flex items-center justify-center text-xl flex-shrink-0">
-                        {product.emoji}
-                      </div>
+                      <div className="w-10 h-10 bg-muted rounded-xl flex items-center justify-center text-xl flex-shrink-0">{product.emoji}</div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{product.name}</p>
                         <p className="text-xs text-muted-foreground">{product.seller_name} • {product.category}</p>
@@ -222,14 +229,8 @@ export default function AdminPage() {
                         </span>
                       </div>
                       <div className="flex gap-1">
-                        <Link href={`/product/${product.id}`}
-                          className="p-2 hover:bg-accent rounded-lg transition">
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                        <button onClick={() => deleteProduct(product.id)}
-                          className="p-2 hover:bg-red-50 hover:text-red-500 rounded-lg transition">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <Link href={`/product/${product.id}`} className="p-2 hover:bg-accent rounded-lg transition"><Eye className="h-4 w-4" /></Link>
+                        <button onClick={() => deleteProduct(product.id)} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-lg transition"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </div>
                   ))}
@@ -248,21 +249,13 @@ export default function AdminPage() {
                     <div key={order.id} className="p-4 flex items-center gap-4">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm">{order.buyer_name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          📞 {order.buyer_phone} • 📍 {order.buyer_region} • {formatDate(order.created_at)}
-                        </p>
+                        <p className="text-xs text-muted-foreground">📞 {order.buyer_phone} • 📍 {order.buyer_region} • {formatDate(order.created_at)}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="font-bold text-jaay-green text-sm">{formatPrice(order.total_price)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {order.payment_method === "wave" ? "Wave" : order.payment_method === "orange" ? "Orange Money" : "Free Money"}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{order.payment_method === "wave" ? "Wave" : order.payment_method === "orange" ? "Orange Money" : "Free Money"}</p>
                       </div>
-                      <select
-                        value={order.status}
-                        onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                        className="text-xs px-2 py-1 rounded-lg border border-border bg-background focus:outline-none"
-                      >
+                      <select value={order.status} onChange={(e) => updateOrderStatus(order.id, e.target.value)} className="text-xs px-2 py-1 rounded-lg border border-border bg-background focus:outline-none">
                         <option value="en_attente">En attente</option>
                         <option value="confirme">Confirmé</option>
                         <option value="en_livraison">En livraison</option>
@@ -284,30 +277,21 @@ export default function AdminPage() {
                 <div className="divide-y">
                   {sellers.map((seller) => (
                     <div key={seller.id} className="p-4 flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
-                        style={{ background: "oklch(0.35 0.12 145)" }}>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{ background: "oklch(0.35 0.12 145)" }}>
                         {seller.full_name[0]}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm">{seller.full_name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          🏪 {seller.shop_name} • 📍 {seller.region} • 📞 {seller.phone}
-                        </p>
+                        <p className="text-xs text-muted-foreground">🏪 {seller.shop_name} • 📍 {seller.region} • 📞 {seller.phone}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${seller.verified ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
                           {seller.verified ? "✅ Vérifié" : "⏳ En attente"}
                         </span>
                         {!seller.verified ? (
-                          <button onClick={() => verifySeller(seller.id, true)}
-                            className="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition">
-                            <Check className="h-4 w-4" />
-                          </button>
+                          <button onClick={() => verifySeller(seller.id, true)} className="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition"><Check className="h-4 w-4" /></button>
                         ) : (
-                          <button onClick={() => verifySeller(seller.id, false)}
-                            className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">
-                            <X className="h-4 w-4" />
-                          </button>
+                          <button onClick={() => verifySeller(seller.id, false)} className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"><X className="h-4 w-4" /></button>
                         )}
                       </div>
                     </div>
@@ -318,6 +302,7 @@ export default function AdminPage() {
           </>
         )}
       </main>
+      <Footer />
     </div>
   );
 }
