@@ -4,6 +4,7 @@ import { Search, ShoppingCart, Menu, User, Heart, Phone } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
+import ImageSearch from "@/components/ImageSearch";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -39,9 +40,15 @@ export default function Header() {
 
           {/* Actions droite */}
           <div className="flex items-center gap-2">
+            {/* Recherche par image */}
+            <div className="hidden md:block">
+              <ImageSearch />
+            </div>
+
             <button className="hidden md:flex p-2 rounded-lg hover:bg-accent">
               <Heart className="h-5 w-5" />
             </button>
+
             <Link href="/cart" className="relative p-2 rounded-lg hover:bg-accent">
               <ShoppingCart className="h-5 w-5" />
               {totalItems > 0 && (
@@ -53,24 +60,24 @@ export default function Header() {
                 </span>
               )}
             </Link>
+
             <a href="tel:+221783854465" className="hidden lg:flex items-center gap-1 border border-border px-3 py-2 rounded-lg text-sm hover:bg-accent">
               <Phone className="h-4 w-4" />
               +221 78 385 44 65
             </a>
-            <Link
-              href="/auth/login"
-              className="hidden md:flex items-center gap-1 border border-border px-3 py-2 rounded-lg text-sm hover:bg-accent"
-            >
+
+            <Link href="/auth/login"
+              className="hidden md:flex items-center gap-1 border border-border px-3 py-2 rounded-lg text-sm hover:bg-accent">
               <User className="h-4 w-4" />
               Connexion
             </Link>
-            <Link
-              href="/seller"
+
+            <Link href="/seller"
               className="hidden md:flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium text-white hover:opacity-90 transition"
-              style={{ background: "oklch(0.35 0.12 145)" }}
-            >
+              style={{ background: "oklch(0.35 0.12 145)" }}>
               🏪 Vendre
             </Link>
+
             <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               <Menu className="h-5 w-5" />
             </button>
@@ -79,13 +86,16 @@ export default function Header() {
 
         {/* Recherche mobile */}
         <div className="pb-3 md:hidden">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Rechercher..."
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none"
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="search"
+                placeholder="Rechercher..."
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none"
+              />
+            </div>
+            <ImageSearch />
           </div>
         </div>
 
