@@ -40,6 +40,7 @@ export default function Header() {
 
           {/* Actions droite */}
           <div className="flex items-center gap-2">
+
             {/* Recherche par image */}
             <div className="hidden md:block">
               <ImageSearch />
@@ -66,15 +67,21 @@ export default function Header() {
               +221 78 385 44 65
             </a>
 
-            <Link href="/auth/login"
+            <Link href="/profile"
               className="hidden md:flex items-center gap-1 border border-border px-3 py-2 rounded-lg text-sm hover:bg-accent">
               <User className="h-4 w-4" />
+              Mon profil
+            </Link>
+
+            <Link href="/auth/login"
+              className="hidden md:flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium text-white hover:opacity-90 transition"
+              style={{ background: "oklch(0.35 0.12 145)" }}>
               Connexion
             </Link>
 
             <Link href="/seller"
               className="hidden md:flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium text-white hover:opacity-90 transition"
-              style={{ background: "oklch(0.35 0.12 145)" }}>
+              style={{ background: "oklch(0.65 0.19 45)" }}>
               🏪 Vendre
             </Link>
 
@@ -102,8 +109,11 @@ export default function Header() {
         {/* Menu mobile */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t py-3 space-y-2">
+            <Link href="/profile" className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-accent text-sm">
+              <User className="h-4 w-4" /> Mon profil
+            </Link>
             <Link href="/auth/login" className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-accent text-sm">
-              <User className="h-4 w-4" /> Connexion
+              🔐 Connexion vendeur
             </Link>
             <button className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-accent text-sm">
               <Heart className="h-4 w-4" /> Favoris
