@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/contexts/CartContext";
+import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import ChatBot from "@/components/ChatBot";
 import PWAInstall from "@/components/PWAInstall";
@@ -35,10 +36,12 @@ export default function RootLayout({
       </head>
       <body className={`${poppins.variable} font-sans antialiased`}>
         <CartProvider>
-          {children}
-          <WhatsAppButton variant="floating" />
-          <ChatBot />
-          <PWAInstall />
+          <FavoritesProvider>
+            {children}
+            <WhatsAppButton variant="floating" />
+            <ChatBot />
+            <PWAInstall />
+          </FavoritesProvider>
         </CartProvider>
       </body>
     </html>

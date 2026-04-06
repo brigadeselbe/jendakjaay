@@ -1,14 +1,16 @@
 "use client";
 
-import { Search, ShoppingCart, Menu, User, Heart, Phone } from "lucide-react";
+import { Search, ShoppingCart, Menu, Heart, Phone } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
+import { useFavorites } from "@/contexts/FavoritesContext";
 import ImageSearch from "@/components/ImageSearch";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { totalItems } = useCart();
+  const { totalFavorites } = useFavorites();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
@@ -46,10 +48,20 @@ export default function Header() {
               <ImageSearch />
             </div>
 
-            <button className="hidden md:flex p-2 rounded-lg hover:bg-accent">
+            {/* Favoris */}
+            <Link href="/favorites" className="hidden md:flex relative p-2 rounded-lg hover:bg-accent">
               <Heart className="h-5 w-5" />
-            </button>
+              {totalFavorites > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 text-white font-bold w-4 h-4 rounded-full flex items-center justify-center"
+                  style={{ background: "red", fontSize: "10px" }}
+                >
+                  {totalFavorites}
+                </span>
+              )}
+            </Link>
 
+            {/* Panier */}
             <Link href="/cart" className="relative p-2 rounded-lg hover:bg-accent">
               <ShoppingCart className="h-5 w-5" />
               {totalItems > 0 && (
@@ -69,8 +81,7 @@ export default function Header() {
 
             <Link href="/profile"
               className="hidden md:flex items-center gap-1 border border-border px-3 py-2 rounded-lg text-sm hover:bg-accent">
-              <User className="h-4 w-4" />
-              Mon profil
+              👤 Mon profil
             </Link>
 
             <Link href="/auth/login"
@@ -110,14 +121,14 @@ export default function Header() {
         {mobileMenuOpen && (
           <div className="md:hidden border-t py-3 space-y-2">
             <Link href="/profile" className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-accent text-sm">
-              <User className="h-4 w-4" /> Mon profil
+              👤 Mon profil
+            </Link>
+            <Link href="/favorites" className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-accent text-sm">
+              <Heart className="h-4 w-4" /> Favoris {totalFavorites > 0 && `(${totalFavorites})`}
             </Link>
             <Link href="/auth/login" className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-accent text-sm">
               🔐 Connexion vendeur
             </Link>
-            <button className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-accent text-sm">
-              <Heart className="h-4 w-4" /> Favoris
-            </button>
             <Link href="/seller" className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-accent text-sm">
               🏪 Devenir vendeur
             </Link>
