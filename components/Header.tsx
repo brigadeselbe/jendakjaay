@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import ImageSearch from "@/components/ImageSearch";
+import Logo from "@/components/Logo";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -29,9 +30,7 @@ export default function Header() {
         <div className="flex h-16 items-center justify-between gap-4">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center flex-shrink-0">
-            <img src="/logo.png" alt="Jënd ak Jaay" className="h-10 w-auto" />
-          </Link>
+          <Logo />
 
           {/* Barre de recherche desktop */}
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl">

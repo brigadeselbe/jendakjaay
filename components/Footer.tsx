@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Logo from "@/components/Logo";
 
 export default function Footer() {
   return (
@@ -9,7 +10,7 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="mb-4">
-              <img src="/logo.png" alt="Jënd ak Jaay" className="h-10 w-auto" />
+              <Logo size="sm" />
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
               La marketplace sénégalaise qui connecte vendeurs et acheteurs localement.
