@@ -4,57 +4,101 @@ interface LogoProps {
   size?: "sm" | "md" | "lg";
   href?: string;
   className?: string;
+  /** force le texte en blanc (ex: sur fond sombre) */
+  light?: boolean;
 }
 
-export default function Logo({ size = "md", href = "/", className = "" }: LogoProps) {
-  const sizes = {
-    sm: { icon: 32, bag: 18, text: "text-sm", gap: "gap-2" },
-    md: { icon: 40, bag: 22, text: "text-base", gap: "gap-2.5" },
-    lg: { icon: 52, bag: 28, text: "text-xl", gap: "gap-3" },
-  };
-  const s = sizes[size];
+/** Couleurs fidèles au logo original */
+const C = {
+  cartGreen:  "#2d8a4e",   // vert du corps du chariot
+  cartOrange: "#f07a1a",   // orange du manche + roue droite
+  textGreen:  "#1a4d2b",   // vert foncé du texte
+  textOrange: "#f07a1a",   // orange du "Jaay"
+};
 
-  const content = (
-    <span className={`flex items-center ${s.gap} ${className} group cursor-pointer`}>
-      {/* Icône SVG */}
-      <span
-        className="flex-shrink-0 rounded-2xl flex items-center justify-center relative overflow-hidden shadow-md transition-all duration-300 group-hover:shadow-lg group-hover:scale-105"
-        style={{
-          width: s.icon,
-          height: s.icon,
-          background: "linear-gradient(135deg, oklch(0.38 0.13 145) 0%, oklch(0.30 0.10 145) 40%, oklch(0.60 0.18 45) 100%)",
-        }}
-      >
-        {/* Reflet interne */}
-        <span className="absolute top-0 left-0 right-0 h-1/2 rounded-t-2xl opacity-20"
-          style={{ background: "linear-gradient(180deg, white, transparent)" }} />
+/** Icône chariot SVG — reproduit fidèlement le logo */
+function CartIcon({ size }: { size: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 60 60"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/* ── Corps du chariot (vert) ── */}
+      {/* Côté gauche + bas + barre intérieure */}
+      <path
+        d="M10 12 L10 38 L44 38"
+        stroke={C.cartGreen}
+        strokeWidth="5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Barre horizontale intérieure */}
+      <line
+        x1="10" y1="26"
+        x2="44" y2="26"
+        stroke={C.cartGreen}
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
 
-        {/* Sac shopping SVG */}
-        <svg
-          width={s.bag}
-          height={s.bag}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          {/* Corps du sac */}
-          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" fill="rgba(255,255,255,0.2)" stroke="white" />
-          {/* Ligne horizontale du sac */}
-          <line x1="3" y1="6" x2="21" y2="6" />
-          {/* Anses */}
-          <path d="M16 10a4 4 0 01-8 0" />
-        </svg>
+      {/* ── Manche + bord supérieur (orange) ── */}
+      {/* Bord supérieur du panier */}
+      <line
+        x1="10" y1="12"
+        x2="38" y2="12"
+        stroke={C.cartOrange}
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
+      {/* Manche courbé vers le haut-droite */}
+      <path
+        d="M38 12 Q50 12 50 4"
+        stroke={C.cartOrange}
+        strokeWidth="5"
+        strokeLinecap="round"
+        fill="none"
+      />
+
+      {/* ── Roues ── */}
+      <circle cx="18" cy="46" r="5" fill={C.cartGreen} />
+      <circle cx="36" cy="46" r="5" fill={C.cartOrange} />
+    </svg>
+  );
+}
+
+export default function Logo({ size = "md", href = "/", className = "", light = false }: LogoProps) {
+  const cfg = {
+    sm: { icon: 34, textSize: "text-[15px]", gap: "gap-2",   tracking: "tracking-tight" },
+    md: { icon: 42, textSize: "text-[18px]", gap: "gap-2.5", tracking: "tracking-tight" },
+    lg: { icon: 56, textSize: "text-[24px]", gap: "gap-3",   tracking: "tracking-tight" },
+  }[size];
+
+  const textGreen  = light ? "text-white"        : undefined;
+  const textOrange = light ? "text-orange-300"   : undefined;
+
+  const inner = (
+    <span
+      className={`inline-flex items-center ${cfg.gap} ${className} group select-none`}
+    >
+      {/* Icône chariot */}
+      <span className="flex-shrink-0 transition-transform duration-300 group-hover:scale-110">
+        <CartIcon size={cfg.icon} />
       </span>
 
       {/* Texte */}
-      <span className={`font-black leading-none ${s.text} tracking-tight select-none`}>
-        <span className="text-foreground transition-colors duration-200">Jënd ak </span>
+      <span className={`font-black ${cfg.textSize} ${cfg.tracking} leading-none`}>
         <span
-          className="transition-colors duration-200"
-          style={{ color: "oklch(0.62 0.19 45)" }}
+          className={`transition-colors ${textGreen ?? ""}`}
+          style={!light ? { color: C.textGreen } : undefined}
+        >
+          Jënd ak{" "}
+        </span>
+        <span
+          className={`transition-colors ${textOrange ?? ""}`}
+          style={!light ? { color: C.textOrange } : undefined}
         >
           Jaay
         </span>
@@ -62,5 +106,9 @@ export default function Logo({ size = "md", href = "/", className = "" }: LogoPr
     </span>
   );
 
-  return href ? <Link href={href}>{content}</Link> : content;
+  return href ? (
+    <Link href={href} className="outline-none">
+      {inner}
+    </Link>
+  ) : inner;
 }

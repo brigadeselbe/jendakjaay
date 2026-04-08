@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import Header from "@/components/Header";
+import Logo from "@/components/Logo";
 import { createClient } from "@/lib/supabase/client";
 
 const regions = [
@@ -110,7 +111,7 @@ export default function RegisterPage() {
           </Link>
 
           <div className="text-center mb-8">
-            <img src="/logo.png" alt="Jënd ak Jaay" className="h-12 w-auto mx-auto mb-4" />
+            <div className="flex justify-center mb-4"><Logo size="lg" href="/" /></div>
             <h1 className="text-2xl font-bold">Créer un compte vendeur</h1>
             <p className="text-muted-foreground text-sm mt-1">
               Rejoignez Jënd ak Jaay gratuitement
