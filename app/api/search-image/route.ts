@@ -6,6 +6,10 @@ export async function POST(request: NextRequest) {
   try {
     const { image, media_type, products } = await request.json();
 
+    if (!image) {
+      return NextResponse.json({ error: "Image manquante" }, { status: 400 });
+    }
+
     const safeMediaType: MediaType =
       ["image/jpeg", "image/png", "image/gif", "image/webp"].includes(media_type)
         ? media_type
@@ -25,7 +29,7 @@ export async function POST(request: NextRequest) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-opus-4-5",
+        model: "claude-opus-4-6",
         max_tokens: 600,
         messages: [{
           role: "user",
@@ -55,20 +59,26 @@ Si la liste est vide, mets matches:[].`,
     });
 
     if (!response.ok) {
-      throw new Error(`Anthropic error: ${response.status}`);
+      const errBody = await response.json().catch(() => ({}));
+      const errMsg = errBody?.error?.message ?? `Erreur Anthropic ${response.status}`;
+      console.error("Anthropic API error:", response.status, errBody);
+      return NextResponse.json({ error: errMsg }, { status: 502 });
     }
 
     const data = await response.json();
     const rawText = data.content?.[0]?.text ?? "{}";
 
-    // Extraction JSON robuste
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("Réponse IA invalide");
+    if (!jsonMatch) {
+      console.error("Réponse IA non JSON:", rawText);
+      return NextResponse.json({ error: "Réponse IA invalide" }, { status: 502 });
+    }
 
     const result = JSON.parse(jsonMatch[0]);
     return NextResponse.json(result);
   } catch (err) {
     console.error("search-image error:", err);
-    return NextResponse.json({ error: "Erreur analyse image" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Erreur inconnue";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

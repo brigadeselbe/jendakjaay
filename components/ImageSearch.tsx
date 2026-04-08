@@ -91,6 +91,7 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
 
       const result = await response.json();
       if (result.error) throw new Error(result.error);
+      if (!result.detected) throw new Error("Aucune réponse reçue de l'IA");
 
       setDetected(result.detected);
 
@@ -98,8 +99,9 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
         result.matches?.includes(p.id)
       );
       setResults(matched);
-    } catch {
-      setError("Impossible d'analyser l'image. Réessayez !");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erreur inconnue";
+      setError(msg);
     } finally {
       setLoading(false);
     }
