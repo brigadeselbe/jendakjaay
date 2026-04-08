@@ -234,7 +234,7 @@ export default function HelpPage() {
                 Notre équipe est disponible 7j/7 de 8h à 20h
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                
+                <a
                   href="https://wa.me/221783854465?text=Bonjour, j'ai besoin d'aide !"
                   target="_blank"
                   rel="noopener noreferrer"

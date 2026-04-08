@@ -22,7 +22,7 @@ function formatPrice(price: number) {
   return price.toLocaleString("fr-SN") + " FCFA";
 }
 
-export default function SellerDashboard(): JSX.Element {
+export default function SellerDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +33,7 @@ export default function SellerDashboard(): JSX.Element {
       try {
         const supabase = createClient();
         const { data, error } = await supabase
-          .from<Product>("products")
+          .from("products")
           .select("*")
           .order("created_at", { ascending: false });
 

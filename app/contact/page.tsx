@@ -65,7 +65,7 @@ export default function SellerOrdersPage() {
     async function loadOrders() {
       try {
         const supabase = createClient();
-        const { data } = await supabase.from<Order>("orders").select("*").order("created_at", { ascending: false });
+        const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
         if (!mounted) return;
         if (data) setOrders(data);
       } catch (err) {

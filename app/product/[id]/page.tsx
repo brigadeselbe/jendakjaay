@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Heart, ShoppingCart, Star, ArrowLeft, Share2, Shield, Truck, RotateCcw } from "lucide-react";
 import Link from "next/link";
@@ -8,6 +8,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart } from "@/contexts/CartContext";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { ChatButton } from "@/components/ChatWindow";
 import { createClient } from "@/lib/supabase/client";
 
 interface Product {
@@ -23,7 +24,9 @@ interface Product {
   emoji: string;
   badge: string | null;
   image_url: string | null;
+  video_url: string | null;
   description: string | null;
+  seller_phone: string | null;
 }
 
 interface Review {
@@ -78,7 +81,7 @@ export default function ProductDetail() {
     try {
       const supabase = createClient();
       const { data, error } = await supabase
-        .from<Product>("products")
+        .from("products")
         .select("*")
         .eq("id", productId)
         .single();
@@ -97,7 +100,7 @@ export default function ProductDetail() {
     try {
       const supabase = createClient();
       const { data, error } = await supabase
-        .from<Review>("reviews")
+        .from("reviews")
         .select("*")
         .eq("product_id", productId)
         .order("created_at", { ascending: false });
@@ -140,12 +143,11 @@ export default function ProductDetail() {
   function handleAddToCart() {
     if (!product) return;
     addItem({
-      id: product.id, // keep id as string to avoid NaN issues
+      id: Number(product.id),
       name: product.name,
       price: product.price,
       emoji: product.emoji,
       seller: product.seller_name,
-      quantity,
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
@@ -206,24 +208,35 @@ export default function ProductDetail() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-12">
 
-          {/* Image */}
-          <div className="relative bg-muted rounded-2xl flex items-center justify-center h-80 md:h-full min-h-[320px] overflow-hidden">
-            {product.image_url ? (
-              // use plain img; Next/Image could be used instead if configured
-              <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-9xl">{product.emoji}</span>
-            )}
-            {product.badge && (
-              <span className="absolute top-4 left-4 text-white text-sm font-semibold px-3 py-1 rounded-full"
-                style={{ background: "oklch(0.65 0.19 45)" }}>
-                {product.badge}
-              </span>
-            )}
-            {discount && (
-              <span className="absolute top-4 right-4 bg-red-500 text-white text-sm font-semibold px-3 py-1 rounded-full">
-                -{discount}%
-              </span>
+          {/* Image + Vidéo */}
+          <div className="space-y-3">
+            <div className="relative bg-muted rounded-2xl flex items-center justify-center h-80 overflow-hidden">
+              {product.image_url ? (
+                <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-9xl">{product.emoji}</span>
+              )}
+              {product.badge && (
+                <span className="absolute top-4 left-4 text-white text-sm font-semibold px-3 py-1 rounded-full"
+                  style={{ background: "oklch(0.65 0.19 45)" }}>
+                  {product.badge}
+                </span>
+              )}
+              {discount && (
+                <span className="absolute top-4 right-4 bg-red-500 text-white text-sm font-semibold px-3 py-1 rounded-full">
+                  -{discount}%
+                </span>
+              )}
+            </div>
+            {product.video_url && (
+              <div className="rounded-2xl overflow-hidden bg-black">
+                <video
+                  src={product.video_url}
+                  controls
+                  className="w-full max-h-64 object-contain"
+                  poster={product.image_url ?? undefined}
+                />
+              </div>
             )}
           </div>
 
@@ -304,9 +317,19 @@ export default function ProductDetail() {
               </button>
             </div>
 
+            {/* Chat vendeur */}
+            <div className="mb-3">
+              <ChatButton
+                sellerName={product.seller_name}
+                sellerPhone={product.seller_phone ?? ""}
+                productName={product.name}
+                productId={product.id}
+              />
+            </div>
+
             {/* WhatsApp */}
             <div className="mb-6">
-              <WhatsAppButton productName={product.name} price={product.price} phone="221783854465" />
+              <WhatsAppButton productName={product.name} price={product.price} phone={product.seller_phone ?? "221783854465"} />
             </div>
 
             {/* Garanties */}

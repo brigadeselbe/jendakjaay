@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Sparkles, Plus, Upload, X } from "lucide-react";
+import { ArrowLeft, Sparkles, Plus, Upload, X, Video } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import Header from "@/components/Header";
@@ -29,6 +29,8 @@ export default function AddProductPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [form, setForm] = useState({
     name: "",
@@ -66,6 +68,22 @@ export default function AddProductPage() {
     setImagePreview(null);
   }
 
+  function handleVideoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) {
+      alert("La vidéo ne doit pas dépasser 50MB !");
+      return;
+    }
+    setVideoFile(file);
+    setVideoPreview(URL.createObjectURL(file));
+  }
+
+  function removeVideo() {
+    setVideoFile(null);
+    setVideoPreview(null);
+  }
+
   async function generateDescription() {
     if (!form.name || !form.category) {
       alert("Entrez d'abord le nom du produit et la catégorie !");
@@ -73,12 +91,10 @@ export default function AddProductPage() {
     }
     setAiLoading(true);
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 300,
           system: "Tu es un assistant pour vendeurs sénégalais sur la marketplace Jënd ak Jaay. Tu génères des descriptions courtes et attrayantes pour des produits. Maximum 2-3 phrases. En français simple.",
           messages: [{
             role: "user",
@@ -105,21 +121,40 @@ export default function AddProductPage() {
     try {
       const supabase = createClient();
       let image_url = null;
+      let video_url = null;
 
       // Upload image si présente
       if (imageFile) {
-        setUploadProgress(30);
+        setUploadProgress(20);
         const fileExt = imageFile.name.split(".").pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const fileName = `img_${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
           .from("products")
           .upload(fileName, imageFile);
         if (uploadError) throw uploadError;
-        setUploadProgress(70);
+        setUploadProgress(50);
         const { data: urlData } = supabase.storage
           .from("products")
           .getPublicUrl(fileName);
         image_url = urlData.publicUrl;
+      }
+
+      // Upload vidéo si présente
+      if (videoFile) {
+        setUploadProgress(60);
+        const fileExt = videoFile.name.split(".").pop();
+        const fileName = `vid_${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from("products")
+          .upload(fileName, videoFile);
+        if (uploadError) throw uploadError;
+        setUploadProgress(85);
+        const { data: urlData } = supabase.storage
+          .from("products")
+          .getPublicUrl(fileName);
+        video_url = urlData.publicUrl;
+        setUploadProgress(100);
+      } else {
         setUploadProgress(100);
       }
 
@@ -136,6 +171,7 @@ export default function AddProductPage() {
         seller_phone: form.seller_phone,
         seller_region: form.seller_region,
         image_url,
+        video_url,
         rating: 0,
         reviews_count: 0,
         in_stock: true,
@@ -216,6 +252,29 @@ export default function AddProductPage() {
                 <Image src={imagePreview} alt="Preview" fill className="object-cover" />
                 <button
                   onClick={removeImage}
+                  className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Vidéo produit */}
+          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+            <h2 className="font-semibold">🎬 Vidéo du produit (optionnel)</h2>
+            {!videoPreview ? (
+              <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-border rounded-xl cursor-pointer hover:bg-muted transition-colors">
+                <Video className="h-8 w-8 text-muted-foreground mb-2" />
+                <p className="text-sm font-medium">Cliquez pour ajouter une vidéo</p>
+                <p className="text-xs text-muted-foreground mt-1">MP4, MOV — Max 50MB</p>
+                <input type="file" accept="video/*" onChange={handleVideoChange} className="hidden" />
+              </label>
+            ) : (
+              <div className="relative w-full rounded-xl overflow-hidden bg-black">
+                <video src={videoPreview} controls className="w-full max-h-48 object-contain" />
+                <button
+                  onClick={removeVideo}
                   className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition"
                 >
                   <X className="h-4 w-4" />

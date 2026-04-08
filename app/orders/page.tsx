@@ -292,8 +292,8 @@ export default function SellerOrdersPage() {
               </div>
 
               {/* Contacter acheteur WhatsApp */}
-              
-                href={`https://wa.me/${selected.buyer_phone}?text=${encodeURIComponent(`Bonjour ${selected.buyer_name} ! Votre commande sur Jënd ak Jaay est confirmée. Total: ${formatPrice(selected.total_price)}. Merci !`)}`}
+              <a
+                href={`https://wa.me/${selected.buyer_phone}?text=${encodeURIComponent("Bonjour " + selected.buyer_name + " ! Votre commande sur Jënd ak Jaay est confirmée. Total: " + formatPrice(selected.total_price) + ". Merci !")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-white hover:opacity-90 transition"
