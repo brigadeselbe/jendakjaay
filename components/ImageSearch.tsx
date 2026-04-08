@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Camera, X, Search, Loader, ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -26,8 +27,11 @@ function formatPrice(price: number) {
 
 export default function ImageSearch({ open: controlledOpen, onClose }: ImageSearchProps) {
   const [internalOpen, setInternalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled ? controlledOpen : internalOpen;
+
+  useEffect(() => { setMounted(true); }, []);
 
   const [image, setImage] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<string>("image/jpeg");
@@ -148,10 +152,10 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
         className="hidden"
       />
 
-      {/* Modal */}
-      {isOpen && (
+      {/* Modal — rendu via portal pour sortir du contexte d'empilement du header */}
+      {mounted && isOpen && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
         >
           <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl animate-fade-in-up">
@@ -296,7 +300,8 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
