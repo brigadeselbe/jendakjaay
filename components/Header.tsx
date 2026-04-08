@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, ShoppingCart, Menu, Heart, Phone, X } from "lucide-react";
+import { Search, ShoppingCart, Menu, Heart, Phone, X, Camera } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,7 @@ import Logo from "@/components/Logo";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { totalItems } = useCart();
   const { totalFavorites } = useFavorites();
@@ -32,31 +33,44 @@ export default function Header() {
           {/* Logo */}
           <Logo />
 
-          {/* Barre de recherche desktop */}
-          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl">
-            <div className="relative w-full flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Rechercher des produits..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition"
-                />
+          {/* Barre de recherche unifiée — desktop */}
+          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-2xl">
+            <div className="relative w-full flex items-center">
+              {/* Icône loupe à gauche */}
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+
+              {/* Champ de texte */}
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Rechercher des produits, marques..."
+                className="w-full pl-10 pr-24 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition"
+              />
+
+              {/* Bouton appareil photo intégré */}
+              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setImageSearchOpen(true)}
+                  className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-primary"
+                  title="Rechercher par photo"
+                  aria-label="Recherche par image"
+                >
+                  <Camera className="h-4 w-4" />
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-sm px-3 text-xs"
+                >
+                  Chercher
+                </button>
               </div>
-              <button type="submit" className="btn btn-primary btn-sm px-4">
-                Chercher
-              </button>
             </div>
           </form>
 
           {/* Actions droite */}
           <div className="flex items-center gap-1.5">
-
-            <div className="hidden md:block">
-              <ImageSearch />
-            </div>
 
             {/* Favoris */}
             <Link href="/favorites" className="relative p-2.5 rounded-xl hover:bg-accent transition-colors hidden md:flex items-center">
@@ -106,27 +120,34 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Recherche mobile */}
+        {/* Barre de recherche unifiée — mobile */}
         <div className="pb-3 md:hidden">
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Rechercher..."
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+          <form onSubmit={handleSearch} className="relative flex items-center">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Rechercher..."
+              className="w-full pl-10 pr-20 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => setImageSearchOpen(true)}
+                className="p-2 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-primary"
+                aria-label="Recherche par image"
+              >
+                <Camera className="h-4 w-4" />
+              </button>
+              <button type="submit" className="btn btn-primary btn-sm px-2.5">
+                <Search className="h-4 w-4" />
+              </button>
             </div>
-            <button type="submit" className="btn btn-primary btn-sm px-3">
-              <Search className="h-4 w-4" />
-            </button>
-            <ImageSearch />
           </form>
         </div>
 
-        {/* Menu mobile */}
+        {/* Menu mobile déroulant */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t py-3 space-y-1 animate-fade-in-up">
             <Link href="/profile" onClick={() => setMobileMenuOpen(false)}
@@ -159,6 +180,12 @@ export default function Header() {
           </div>
         )}
       </div>
+
+      {/* Modal recherche par image — controllée depuis le header */}
+      <ImageSearch
+        open={imageSearchOpen}
+        onClose={() => setImageSearchOpen(false)}
+      />
     </header>
   );
 }
