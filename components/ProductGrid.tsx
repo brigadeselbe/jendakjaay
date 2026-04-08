@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Heart, ShoppingCart, Star } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
 import { createClient } from "@/lib/supabase/client";
 
@@ -47,6 +48,8 @@ export default function ProductGrid({ selectedCategory = "Tous", filters }: Prod
   const [favorites, setFavorites] = useState<string[]>([]);
   const [added, setAdded] = useState<string[]>([]);
   const { addItem } = useCart();
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("q") ?? "";
 
   useEffect(() => {
     async function loadProducts() {
@@ -72,6 +75,17 @@ export default function ProductGrid({ selectedCategory = "Tous", filters }: Prod
 
   const filtered = useMemo(() => {
     let result = [...products];
+
+    // Filtre recherche texte (depuis la barre de recherche)
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        p.seller_name?.toLowerCase().includes(q) ||
+        p.seller_location?.toLowerCase().includes(q)
+      );
+    }
 
     // Filtre catégorie (depuis CategoryNav)
     if (selectedCategory && selectedCategory !== "Tous") {
@@ -110,7 +124,7 @@ export default function ProductGrid({ selectedCategory = "Tous", filters }: Prod
     }
 
     return result;
-  }, [products, selectedCategory, filters]);
+  }, [products, selectedCategory, filters, searchQuery]);
 
   function toggleFavorite(id: string, e: React.MouseEvent) {
     e.preventDefault();

@@ -11,13 +11,19 @@ export default function Footer() {
             <div className="mb-4">
               <img src="/logo.png" alt="Jënd ak Jaay" className="h-10 w-auto" />
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4">
               La marketplace sénégalaise qui connecte vendeurs et acheteurs localement.
+              Projet étudiant — DAUST, Dakar.
             </p>
-            <div className="flex gap-3 mt-4">
-              <a href="#" className="text-muted-foreground hover:text-primary transition-colors text-sm">Facebook</a>
-              <a href="#" className="text-muted-foreground hover:text-primary transition-colors text-sm">Instagram</a>
-              <a href="#" className="text-muted-foreground hover:text-primary transition-colors text-sm">Twitter</a>
+            <div className="flex gap-3">
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer"
+                className="text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-accent hover:border-primary transition-colors font-medium">
+                Facebook
+              </a>
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer"
+                className="text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-accent hover:border-primary transition-colors font-medium">
+                Instagram
+              </a>
             </div>
           </div>
 
@@ -26,9 +32,9 @@ export default function Footer() {
             <h3 className="font-semibold mb-4">Liens Rapides</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/about" className="hover:text-primary transition-colors">À propos</Link></li>
-              <li><Link href="/how-it-works" className="hover:text-primary transition-colors">Comment ça marche</Link></li>
+              <li><Link href="/help" className="hover:text-primary transition-colors">Comment ça marche</Link></li>
               <li><Link href="/seller" className="hover:text-primary transition-colors">Devenir vendeur</Link></li>
-              <li><Link href="/products" className="hover:text-primary transition-colors">Tous les produits</Link></li>
+              <li><Link href="/" className="hover:text-primary transition-colors">Tous les produits</Link></li>
             </ul>
           </div>
 
@@ -60,21 +66,20 @@ export default function Footer() {
               </li>
             </ul>
 
-            {/* Paiements acceptés */}
-            <div className="mt-4">
-              <p className="text-xs font-medium mb-2">Paiements acceptés</p>
-              <div className="flex gap-2 text-xs text-muted-foreground">
-                <span className="bg-background border border-border px-2 py-1 rounded">📱 Wave</span>
-                <span className="bg-background border border-border px-2 py-1 rounded">🟠 Orange</span>
-                <span className="bg-background border border-border px-2 py-1 rounded">🔵 Free</span>
+            <div className="mt-5">
+              <p className="text-xs font-semibold mb-2 text-foreground">Paiements acceptés</p>
+              <div className="flex gap-2 text-xs">
+                <span className="bg-background border border-border px-2.5 py-1.5 rounded-lg font-medium">📱 Wave</span>
+                <span className="bg-background border border-border px-2.5 py-1.5 rounded-lg font-medium">🟠 Orange</span>
+                <span className="bg-background border border-border px-2.5 py-1.5 rounded-lg font-medium">🔵 Free</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Bas de page */}
-        <div className="border-t pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <p>&copy; 2025 Jënd ak Jaay. Tous droits réservés.</p>
+        <div className="border-t pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+          <p>&copy; 2025 Jënd ak Jaay · Projet étudiant DAUST. Tous droits réservés.</p>
           <p>Fait avec ❤️ au Sénégal 🇸🇳</p>
         </div>
       </div>
