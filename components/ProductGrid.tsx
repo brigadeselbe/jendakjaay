@@ -41,6 +41,81 @@ function formatPrice(price: number) {
   return price.toLocaleString("fr-SN") + " FCFA";
 }
 
+// Normalise le texte : minuscules + supprime accents
+function normalize(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+// Distance de Levenshtein (tolérance aux fautes de frappe)
+function levenshtein(a: string, b: string): number {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b[i - 1] === a[j - 1]) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+// Vérifie si un mot correspond à un champ (exact, partiel ou fuzzy)
+function wordMatchScore(word: string, field: string): number {
+  const f = normalize(field);
+  const w = normalize(word);
+  if (!f || !w) return 0;
+
+  // Correspondance exacte du mot entier
+  if (f === w) return 10;
+  // Correspondance exacte en sous-chaîne
+  if (f.includes(w)) return 6;
+  // Fuzzy : tolérance 1 faute pour mots de 4+ lettres, 2 fautes pour 7+
+  const maxDist = w.length >= 7 ? 2 : w.length >= 4 ? 1 : 0;
+  if (maxDist > 0) {
+    // Cherche dans chaque mot du champ
+    const fieldWords = f.split(/\s+/);
+    for (const fw of fieldWords) {
+      if (Math.abs(fw.length - w.length) <= maxDist) {
+        if (levenshtein(w, fw) <= maxDist) return 3;
+      }
+    }
+  }
+  return 0;
+}
+
+// Calcule le score de pertinence d'un produit pour une requête
+function searchScore(product: Product & { description?: string }, query: string): number {
+  const words = normalize(query).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return 0;
+
+  let total = 0;
+  for (const word of words) {
+    const nameScore     = wordMatchScore(word, product.name) * 5;       // Nom : poids fort
+    const categoryScore = wordMatchScore(word, product.category) * 3;   // Catégorie
+    const descScore     = wordMatchScore(word, product.description ?? "") * 2; // Description
+    const sellerScore   = wordMatchScore(word, product.seller_name ?? ""); // Vendeur
+    const locationScore = wordMatchScore(word, product.seller_location ?? "");
+    const wordBest = Math.max(nameScore, categoryScore, descScore, sellerScore, locationScore);
+    // Si un mot ne matche nulle part, on pénalise fortement
+    if (wordBest === 0) return 0;
+    total += wordBest;
+  }
+  return total;
+}
+
 export default function ProductGrid({ selectedCategory = "Tous", filters }: ProductGridProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,15 +151,13 @@ export default function ProductGrid({ selectedCategory = "Tous", filters }: Prod
   const filtered = useMemo(() => {
     let result = [...products];
 
-    // Filtre recherche texte (depuis la barre de recherche)
+    // Recherche avec scoring de pertinence
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        p.seller_name?.toLowerCase().includes(q) ||
-        p.seller_location?.toLowerCase().includes(q)
-      );
+      const scored = result
+        .map((p) => ({ product: p, score: searchScore(p, searchQuery) }))
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score);
+      result = scored.map(({ product }) => product);
     }
 
     // Filtre catégorie (depuis CategoryNav)
@@ -125,6 +198,29 @@ export default function ProductGrid({ selectedCategory = "Tous", filters }: Prod
 
     return result;
   }, [products, selectedCategory, filters, searchQuery]);
+
+  // Toujours appelé, avant tout return conditionnel
+  const suggestions = useMemo(() => {
+    if (filtered.length > 0 || !searchQuery) return [];
+    return products
+      .map((p) => {
+        const words = normalize(searchQuery).split(/\s+/).filter(Boolean);
+        const nameWords = normalize(p.name).split(/\s+/);
+        let minDist = Infinity;
+        for (const qw of words) {
+          for (const nw of nameWords) {
+            if (Math.abs(qw.length - nw.length) <= 3) {
+              minDist = Math.min(minDist, levenshtein(qw, nw));
+            }
+          }
+        }
+        return { name: p.name, dist: minDist };
+      })
+      .filter(({ dist }) => dist <= 3)
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 3)
+      .map(({ name }) => name);
+  }, [filtered.length, searchQuery, products]);
 
   function toggleFavorite(id: string, e: React.MouseEvent) {
     e.preventDefault();
@@ -181,7 +277,24 @@ export default function ProductGrid({ selectedCategory = "Tous", filters }: Prod
       <section className="py-16 text-center">
         <div className="text-4xl mb-4">🔍</div>
         <h2 className="text-xl font-bold mb-2">Aucun produit trouvé</h2>
-        <p className="text-muted-foreground text-sm">Essayez d&apos;autres filtres</p>
+        {searchQuery && suggestions.length > 0 ? (
+          <div className="mt-2">
+            <p className="text-muted-foreground text-sm mb-3">Vouliez-vous dire :</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => window.location.href = `/?q=${encodeURIComponent(s)}`}
+                  className="px-4 py-1.5 rounded-full border border-border text-sm hover:bg-accent transition"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">Essayez d&apos;autres mots-clés</p>
+        )}
       </section>
     );
   }

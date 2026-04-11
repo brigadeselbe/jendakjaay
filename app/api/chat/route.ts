@@ -42,24 +42,45 @@ Aide les acheteurs à trouver des produits parmi cette liste, à passer une comm
 Aide aussi les vendeurs à publier leurs produits.
 Réponds de manière courte et utile, maximum 3-4 phrases.`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY!,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        system: system ?? defaultSystem,
-        messages,
-      }),
-    });
+    // Convertir les messages au format Gemini (role "assistant" → "model")
+    const geminiContents = messages.map((m: { role: string; content: string }) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: system ?? defaultSystem }],
+          },
+          contents: geminiContents,
+          generationConfig: {
+            maxOutputTokens: 1000,
+            temperature: 0.7,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.json();
+      console.error("Gemini API error:", err);
+      return NextResponse.json(err, { status: response.status });
+    }
 
     const data = await response.json();
-    return NextResponse.json(data);
-  } catch {
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "Désolé, je n'ai pas pu répondre.";
+
+    // Retourner dans le même format qu'avant pour que ChatBot.tsx fonctionne
+    return NextResponse.json({
+      content: [{ type: "text", text }],
+    });
+  } catch (e) {
+    console.error("Chat route error:", e);
     return NextResponse.json(
       { error: "Erreur serveur" },
       { status: 500 }

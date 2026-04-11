@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Camera, X, Search, Loader, ImageIcon } from "lucide-react";
+import { Camera, X, Search, Loader, ImageIcon, ZoomIn } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -16,7 +16,6 @@ interface Product {
 }
 
 interface ImageSearchProps {
-  /** Controlled mode: open state driven by parent */
   open?: boolean;
   onClose?: () => void;
 }
@@ -41,18 +40,69 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
   const [results, setResults] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Camera state
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
 
   function close() {
     if (isControlled) onClose?.();
     else setInternalOpen(false);
   }
 
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+    setCameraError(null);
+  }, []);
+
+  async function startCamera() {
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false,
+      });
+      streamRef.current = stream;
+      setCameraActive(true);
+      // Attendre que le DOM soit prêt
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+        }
+      }, 100);
+    } catch {
+      setCameraError("Impossible d'accéder à la caméra. Autorisez l'accès dans votre navigateur.");
+    }
+  }
+
+  function capturePhoto() {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d")?.drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+    const base64 = dataUrl.split(",")[1];
+    setImage(base64);
+    setMediaType("image/jpeg");
+    setImagePreviewUrl(dataUrl);
+    setDetected(null);
+    setResults([]);
+    setError(null);
+    stopCamera();
+  }
+
   function handleFileSelected(file: File) {
     const type = file.type && file.type.startsWith("image/") ? file.type : "image/jpeg";
     const previewUrl = URL.createObjectURL(file);
-
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = (reader.result as string).split(",")[1];
@@ -69,7 +119,6 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) handleFileSelected(file);
-    // Reset input so same file can be re-selected
     e.target.value = "";
   }
 
@@ -94,7 +143,6 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
       if (!result.detected) throw new Error("Aucune réponse reçue de l'IA");
 
       setDetected(result.detected);
-
       const matched = (products || []).filter((p: Product) =>
         result.matches?.includes(p.id)
       );
@@ -115,6 +163,7 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
     setDetected(null);
     setResults([]);
     setError(null);
+    stopCamera();
   }
 
   function handleClose() {
@@ -124,7 +173,6 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
 
   return (
     <>
-      {/* Trigger button — only shown in uncontrolled mode */}
       {!isControlled && (
         <button
           onClick={() => setInternalOpen(true)}
@@ -137,7 +185,7 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
         </button>
       )}
 
-      {/* Hidden file inputs */}
+      {/* Input galerie caché */}
       <input
         ref={galleryRef}
         type="file"
@@ -145,16 +193,7 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
         onChange={handleFileChange}
         className="hidden"
       />
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={handleFileChange}
-        className="hidden"
-      />
 
-      {/* Modal — rendu via portal pour sortir du contexte d'empilement du header */}
       {mounted && isOpen && createPortal(
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
@@ -169,22 +208,52 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
                   Photographiez un objet pour trouver des produits similaires
                 </p>
               </div>
-              <button
-                onClick={handleClose}
-                className="p-2 hover:bg-accent rounded-xl transition"
-                aria-label="Fermer"
-              >
+              <button onClick={handleClose} className="p-2 hover:bg-accent rounded-xl transition" aria-label="Fermer">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="p-5 space-y-4">
 
-              {!image ? (
+              {/* Vue caméra active */}
+              {cameraActive && !image && (
                 <div className="space-y-3">
-                  {/* Camera capture */}
+                  <div className="relative rounded-2xl overflow-hidden bg-black" style={{ aspectRatio: "4/3" }}>
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {cameraError && (
+                    <p className="text-red-500 text-sm text-center">{cameraError}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={stopCamera}
+                      className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-accent transition"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={capturePhoto}
+                      className="flex-1 py-2.5 rounded-xl text-white font-semibold text-sm hover:opacity-90 transition flex items-center justify-center gap-2"
+                      style={{ background: "oklch(0.35 0.12 145)" }}
+                    >
+                      <ZoomIn className="h-4 w-4" />
+                      Capturer
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Choix initial */}
+              {!image && !cameraActive && (
+                <div className="space-y-3">
                   <button
-                    onClick={() => cameraRef.current?.click()}
+                    onClick={startCamera}
                     className="w-full flex items-center justify-center gap-3 h-28 border-2 border-dashed border-border rounded-2xl hover:bg-muted transition-colors cursor-pointer group"
                   >
                     <Camera className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -194,7 +263,10 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
                     </div>
                   </button>
 
-                  {/* Gallery picker */}
+                  {cameraError && (
+                    <p className="text-red-500 text-sm text-center px-2">{cameraError}</p>
+                  )}
+
                   <button
                     onClick={() => galleryRef.current?.click()}
                     className="w-full flex items-center justify-center gap-3 h-20 border border-border rounded-2xl hover:bg-muted transition-colors cursor-pointer group"
@@ -206,7 +278,10 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
                     </div>
                   </button>
                 </div>
-              ) : (
+              )}
+
+              {/* Aperçu image sélectionnée */}
+              {image && (
                 <div className="relative">
                   <img
                     src={imagePreviewUrl ?? `data:${mediaType};base64,${image}`}
@@ -259,9 +334,7 @@ export default function ImageSearch({ open: controlledOpen, onClose }: ImageSear
 
               {results.length > 0 && (
                 <div>
-                  <h3 className="font-semibold mb-3">
-                    Produits similaires ({results.length}) :
-                  </h3>
+                  <h3 className="font-semibold mb-3">Produits similaires ({results.length}) :</h3>
                   <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                     {results.map((product) => (
                       <Link

@@ -85,31 +85,66 @@ export default function AddProductPage() {
   }
 
   async function generateDescription() {
-    if (!form.name || !form.category) {
-      alert("Entrez d'abord le nom du produit et la catégorie !");
-      return;
-    }
     setAiLoading(true);
     try {
-      const response = await fetch("/api/chat", {
+      // Extraire le base64 de l'image si disponible
+      let imageBase64: string | null = null;
+      let imageMediaType: string | null = null;
+      if (imagePreview) {
+        const parts = imagePreview.split(",");
+        imageBase64 = parts[1] ?? null;
+        const match = parts[0].match(/data:(image\/\w+);base64/);
+        imageMediaType = match?.[1] ?? "image/jpeg";
+      } else if (videoPreview && videoFile) {
+        // Extraire une frame de la vidéo via canvas
+        try {
+          const frame = await extractVideoFrame(videoPreview);
+          if (frame) {
+            imageBase64 = frame.split(",")[1];
+            imageMediaType = "image/jpeg";
+          }
+        } catch { /* ignore, on continue sans image */ }
+      }
+
+      const response = await fetch("/api/describe-product", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system: "Tu es un assistant pour vendeurs sénégalais sur la marketplace Jënd ak Jaay. Tu génères des descriptions courtes et attrayantes pour des produits. Maximum 2-3 phrases. En français simple.",
-          messages: [{
-            role: "user",
-            content: `Génère une description courte et attrayante pour ce produit: "${form.name}" dans la catégorie "${form.category}"${form.seller_region ? ` vendu à ${form.seller_region}` : ""}. Maximum 2-3 phrases simples.`
-          }]
+          image: imageBase64,
+          media_type: imageMediaType,
+          name: form.name,
+          category: form.category,
+          region: form.seller_region,
         }),
       });
       const data = await response.json();
-      const description = data.content?.[0]?.text || "";
-      setForm((prev) => ({ ...prev, description }));
+      if (data.description) {
+        setForm((prev) => ({ ...prev, description: data.description }));
+      } else {
+        alert("Erreur lors de la génération. Réessayez !");
+      }
     } catch {
       alert("Erreur lors de la génération. Réessayez !");
     } finally {
       setAiLoading(false);
     }
+  }
+
+  function extractVideoFrame(videoUrl: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      video.src = videoUrl;
+      video.crossOrigin = "anonymous";
+      video.currentTime = 1;
+      video.onloadeddata = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d")?.drawImage(video, 0, 0);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      video.onerror = reject;
+    });
   }
 
   async function handleSubmit() {
@@ -310,7 +345,7 @@ export default function AddProductPage() {
                   className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg text-white transition hover:opacity-90 disabled:opacity-50"
                   style={{ background: "oklch(0.65 0.19 45)" }}>
                   <Sparkles className="h-3 w-3" />
-                  {aiLoading ? "Génération..." : "Générer avec IA ✨"}
+                  {aiLoading ? "Analyse en cours..." : imagePreview || videoPreview ? "Analyser photo/vidéo ✨" : "Générer avec IA ✨"}
                 </button>
               </div>
               <textarea name="description" value={form.description} onChange={handleChange}

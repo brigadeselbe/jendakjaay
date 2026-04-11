@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-type MediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
-
 export async function POST(request: NextRequest) {
   try {
     const { image, media_type, products } = await request.json();
@@ -10,7 +8,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Image manquante" }, { status: 400 });
     }
 
-    const safeMediaType: MediaType =
+    const safeMediaType =
       ["image/jpeg", "image/png", "image/gif", "image/webp"].includes(media_type)
         ? media_type
         : "image/jpeg";
@@ -21,26 +19,23 @@ export async function POST(request: NextRequest) {
       )
       .join("\n");
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY!,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-opus-4-6",
-        max_tokens: 600,
-        messages: [{
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: { type: "base64", media_type: safeMediaType, data: image },
-            },
-            {
-              type: "text",
-              text: `Tu es un assistant de recherche de produits pour Jënd ak Jaay, marketplace sénégalaise.
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            role: "user",
+            parts: [
+              {
+                inline_data: {
+                  mime_type: safeMediaType,
+                  data: image,
+                },
+              },
+              {
+                text: `Tu es un assistant de recherche de produits pour Jënd ak Jaay, marketplace sénégalaise.
 
 Analyse cette image et identifie l'objet ou produit principal visible.
 
@@ -52,21 +47,35 @@ Réponds UNIQUEMENT avec ce JSON (sans markdown, sans texte avant/après) :
 
 Si aucun produit ne correspond exactement, mets les IDs les plus proches par catégorie.
 Si la liste est vide, mets matches:[].`,
-            },
-          ],
-        }],
-      }),
-    });
+              },
+            ],
+          }],
+          generationConfig: {
+            maxOutputTokens: 600,
+            temperature: 0.2,
+          },
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errBody = await response.json().catch(() => ({}));
-      const errMsg = errBody?.error?.message ?? `Erreur Anthropic ${response.status}`;
-      console.error("Anthropic API error:", response.status, errBody);
-      return NextResponse.json({ error: errMsg }, { status: 502 });
+      console.error("Gemini API error:", response.status, errBody);
+      return NextResponse.json({ error: "Erreur API image" }, { status: 502 });
     }
 
     const data = await response.json();
-    const rawText = data.content?.[0]?.text ?? "{}";
+
+    // Gemini 2.5 flash peut retourner plusieurs parts (dont des "pensées")
+    // On cherche la première part qui contient du JSON
+    const parts: Array<{ text?: string; thought?: boolean }> =
+      data.candidates?.[0]?.content?.parts ?? [];
+    const rawText = parts
+      .filter((p) => !p.thought && p.text)
+      .map((p) => p.text)
+      .join("") || "{}";
+
+    console.log("Gemini image raw response:", rawText.slice(0, 300));
 
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
