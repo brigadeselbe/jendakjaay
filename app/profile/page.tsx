@@ -17,6 +17,7 @@ interface Order {
   total_price: number;
   status: string;
   payment_method: string;
+  tracking_url: string | null;
   created_at: string;
 }
 
@@ -228,6 +229,19 @@ export default function ProfilePage() {
                           {formatPrice(order.total_price)}
                         </div>
                       </div>
+
+                      {/* Suivi livraison */}
+                      {order.status === "en_livraison" && order.tracking_url && (
+                        <a
+                          href={order.tracking_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition"
+                          style={{ background: "#6366f1" }}
+                        >
+                          🚗 Suivre ma livraison en temps réel
+                        </a>
+                      )}
 
                       {/* Contacter vendeur WhatsApp */}
                       {order.status !== "livre" && order.status !== "annule" && (

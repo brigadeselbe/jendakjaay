@@ -28,6 +28,7 @@ interface Order {
   status: string;
   payment_method: string;
   notes: string;
+  tracking_url: string | null;
   created_at: string;
 }
 
@@ -99,6 +100,8 @@ export default function SellerOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("tous");
   const [selected, setSelected] = useState<Order | null>(null);
+  const [trackingInput, setTrackingInput] = useState("");
+  const [showTrackingInput, setShowTrackingInput] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -130,15 +133,19 @@ export default function SellerOrdersPage() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  async function updateStatus(orderId: string, status: string) {
+  async function updateStatus(orderId: string, status: string, tracking_url?: string) {
     const supabase = createClient();
-    await supabase.from("orders").update({ status }).eq("id", orderId);
+    const update: Record<string, string> = { status };
+    if (tracking_url) update.tracking_url = tracking_url;
+    await supabase.from("orders").update(update).eq("id", orderId);
     setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status } : o))
+      prev.map((o) => (o.id === orderId ? { ...o, status, ...(tracking_url ? { tracking_url } : {}) } : o))
     );
     if (selected?.id === orderId) {
-      setSelected((prev) => prev ? { ...prev, status } : null);
+      setSelected((prev) => prev ? { ...prev, status, ...(tracking_url ? { tracking_url } : {}) } : null);
     }
+    setShowTrackingInput(false);
+    setTrackingInput("");
   }
 
   const filteredOrders = filter === "tous"
@@ -329,6 +336,24 @@ export default function SellerOrdersPage() {
                 </div>
               )}
 
+              {/* Lien de suivi existant */}
+              {selected.tracking_url && (
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-lg">🚗</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-blue-700">Lien de suivi actif</p>
+                      <p className="text-xs text-blue-600 truncate">{selected.tracking_url}</p>
+                    </div>
+                  </div>
+                  <a href={selected.tracking_url} target="_blank" rel="noopener noreferrer"
+                    className="flex-shrink-0 text-xs text-white px-3 py-1.5 rounded-lg font-medium"
+                    style={{ background: "#1a56db" }}>
+                    Ouvrir
+                  </a>
+                </div>
+              )}
+
               {/* Actions statut */}
               <div>
                 <p className="font-semibold text-sm mb-3">Changer le statut :</p>
@@ -341,7 +366,13 @@ export default function SellerOrdersPage() {
                   ].map((s) => (
                     <button
                       key={s.value}
-                      onClick={() => updateStatus(selected.id, s.value)}
+                      onClick={() => {
+                        if (s.value === "en_livraison") {
+                          setShowTrackingInput(true);
+                        } else {
+                          updateStatus(selected.id, s.value);
+                        }
+                      }}
                       disabled={selected.status === s.value}
                       className="py-2 px-3 rounded-lg text-sm font-medium border border-border hover:bg-accent transition disabled:opacity-40"
                     >
@@ -349,6 +380,37 @@ export default function SellerOrdersPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* Champ lien de suivi — s'affiche quand on clique "En livraison" */}
+                {showTrackingInput && (
+                  <div className="mt-3 space-y-2 bg-muted rounded-xl p-3">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      🚗 Colle le lien de suivi Yango (optionnel) :
+                    </p>
+                    <input
+                      type="url"
+                      value={trackingInput}
+                      onChange={(e) => setTrackingInput(e.target.value)}
+                      placeholder="https://yango.com/tracking/..."
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => updateStatus(selected.id, "en_livraison", trackingInput || undefined)}
+                        className="flex-1 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition"
+                        style={{ background: "oklch(0.35 0.12 145)" }}
+                      >
+                        Confirmer
+                      </button>
+                      <button
+                        onClick={() => { setShowTrackingInput(false); setTrackingInput(""); }}
+                        className="px-4 py-2 rounded-lg text-sm border border-border hover:bg-accent transition"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Contacter acheteur WhatsApp */}
