@@ -8,6 +8,8 @@ export interface CartItem {
   price: number;
   emoji: string;
   seller: string;
+  seller_phone?: string;
+  wave_merchant_url?: string;
   quantity: number;
 }
 

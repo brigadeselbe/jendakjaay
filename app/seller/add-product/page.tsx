@@ -44,6 +44,7 @@ export default function AddProductPage() {
     seller_location: "",
     seller_phone: "",
     seller_region: "",
+    wave_merchant_url: "",
   });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -205,6 +206,7 @@ export default function AddProductPage() {
         seller_location: form.seller_location,
         seller_phone: form.seller_phone,
         seller_region: form.seller_region,
+        wave_merchant_url: form.wave_merchant_url || null,
         image_url,
         video_url,
         rating: 0,
@@ -253,6 +255,18 @@ export default function AddProductPage() {
                   placeholder="77 123 45 67"
                   className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Lien Wave Marchand
+                <span className="ml-2 text-xs font-normal text-muted-foreground">(pour recevoir les paiements directement)</span>
+              </label>
+              <input name="wave_merchant_url" value={form.wave_merchant_url} onChange={handleChange}
+                placeholder="https://pay.wave.com/m/M_sn_.../c/sn/"
+                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <p className="text-xs text-muted-foreground mt-1">
+                📱 Ouvrez Wave → Mon QR Code → Copier le lien marchand
+              </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

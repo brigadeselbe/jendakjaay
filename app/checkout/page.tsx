@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, ShoppingBag, Check } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/Header";
@@ -20,12 +19,27 @@ function formatPrice(price: number) {
   return price.toLocaleString("fr-SN") + " FCFA";
 }
 
+// Grouper les articles du panier par vendeur
+function groupBySeller(items: ReturnType<typeof useCart>["items"]) {
+  const map = new Map<string, { seller: string; wave_merchant_url?: string; seller_phone?: string; items: typeof items; subtotal: number }>();
+  for (const item of items) {
+    const key = item.seller;
+    if (!map.has(key)) {
+      map.set(key, { seller: item.seller, wave_merchant_url: item.wave_merchant_url, seller_phone: item.seller_phone, items: [], subtotal: 0 });
+    }
+    const group = map.get(key)!;
+    group.items.push(item);
+    group.subtotal += item.price * item.quantity;
+  }
+  return Array.from(map.values());
+}
+
 export default function CheckoutPage() {
-  const router = useRouter();
   const { items, totalPrice, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [orderId, setOrderId] = useState("");
+  const [waveGroups, setWaveGroups] = useState<Array<{ seller: string; wave_merchant_url?: string; subtotal: number }>>([]);
   const [form, setForm] = useState({
     buyer_name: "",
     buyer_phone: "",
@@ -48,18 +62,52 @@ export default function CheckoutPage() {
       return;
     }
     setLoading(true);
+
+    const orderPayload = {
+      buyer_name: form.buyer_name,
+      buyer_phone: form.buyer_phone,
+      buyer_address: form.buyer_address,
+      buyer_region: form.buyer_region,
+      items,
+      total_price: total,
+      delivery_price: livraison,
+      notes: form.notes,
+    };
+
     try {
+      if (form.payment_method === "wave") {
+        // Sauvegarder la commande en base
+        const supabase = createClient();
+        const { data, error } = await supabase.from("orders").insert([{
+          ...orderPayload,
+          payment_method: "wave",
+          status: "en_attente_paiement",
+        }]).select().single();
+        if (error) throw error;
+
+        // Grouper par vendeur pour les redirections Wave
+        const groups = groupBySeller(items);
+        setOrderId(data.id);
+        clearCart();
+
+        if (groups.length === 1 && groups[0].wave_merchant_url) {
+          // Un seul vendeur → redirection directe Wave avec montant
+          const url = new URL(groups[0].wave_merchant_url);
+          url.searchParams.set("amount", String(total));
+          window.location.href = url.toString();
+        } else {
+          // Plusieurs vendeurs ou pas de lien Wave → afficher les liens
+          setWaveGroups(groups.map(g => ({ seller: g.seller, wave_merchant_url: g.wave_merchant_url, subtotal: g.subtotal })));
+          setSuccess(true);
+        }
+        return;
+      }
+
+      // Orange Money / Free Money : enregistrer la commande + afficher instructions
       const supabase = createClient();
       const { data, error } = await supabase.from("orders").insert([{
-        buyer_name: form.buyer_name,
-        buyer_phone: form.buyer_phone,
-        buyer_address: form.buyer_address,
-        buyer_region: form.buyer_region,
-        items: items,
-        total_price: total,
-        delivery_price: livraison,
+        ...orderPayload,
         payment_method: form.payment_method,
-        notes: form.notes,
         status: "en_attente",
       }]).select().single();
 
@@ -93,6 +141,7 @@ export default function CheckoutPage() {
   }
 
   if (success) {
+    const isWave = form.payment_method === "wave";
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
@@ -102,29 +151,61 @@ export default function CheckoutPage() {
               style={{ background: "oklch(0.35 0.12 145)" }}>
               <Check className="h-10 w-10" />
             </div>
-            <h1 className="text-2xl font-bold mb-2">Commande confirmée ! 🎉</h1>
-            <p className="text-muted-foreground mb-2">
-              Votre commande a été reçue avec succès.
-            </p>
+            <h1 className="text-2xl font-bold mb-2">Commande enregistrée ! 🎉</h1>
             <p className="text-sm text-muted-foreground mb-6">
-              Numéro : <span className="font-mono font-medium">{orderId ? orderId.slice(0, 8).toUpperCase() : "—"}</span>
+              N° <span className="font-mono font-medium">{orderId ? orderId.slice(0, 8).toUpperCase() : "—"}</span>
             </p>
 
-            <div className="bg-muted rounded-xl p-4 mb-6 text-sm text-left space-y-2">
-              <p>📱 Vous serez contacté sur <strong>{form.buyer_phone}</strong></p>
-              <p>📍 Livraison à <strong>{form.buyer_address}, {form.buyer_region}</strong></p>
-              <p>💳 Paiement par <strong>{form.payment_method === "wave" ? "Wave" : form.payment_method === "orange" ? "Orange Money" : "Free Money"}</strong></p>
-            </div>
+            {/* Paiement Wave multi-vendeurs */}
+            {isWave && waveGroups.length > 0 && (
+              <div className="mb-6 text-left">
+                <p className="text-sm font-semibold mb-3 text-center">
+                  📱 Payez chaque vendeur via Wave :
+                </p>
+                <div className="space-y-3">
+                  {waveGroups.map((group) => {
+                    const url = group.wave_merchant_url
+                      ? (() => { const u = new URL(group.wave_merchant_url!); u.searchParams.set("amount", String(group.subtotal)); return u.toString(); })()
+                      : null;
+                    return (
+                      <div key={group.seller} className="bg-muted rounded-xl p-4 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-sm">{group.seller}</p>
+                          <p className="text-xs text-muted-foreground">{formatPrice(group.subtotal)}</p>
+                        </div>
+                        {url ? (
+                          <a href={url} target="_blank" rel="noopener noreferrer"
+                            className="flex-shrink-0 text-white text-xs font-bold px-4 py-2 rounded-xl hover:opacity-90 transition"
+                            style={{ background: "#1bb6e8" }}>
+                            📱 Payer Wave
+                          </a>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Pas de lien Wave</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Orange / Free Money */}
+            {!isWave && (
+              <div className="bg-muted rounded-xl p-4 mb-6 text-sm text-left space-y-2">
+                <p>📱 Vous serez contacté sur <strong>{form.buyer_phone}</strong></p>
+                <p>📍 Livraison à <strong>{form.buyer_address}, {form.buyer_region}</strong></p>
+                <p>💳 Paiement par <strong>{form.payment_method === "orange" ? "Orange Money" : "Free Money"}</strong></p>
+              </div>
+            )}
 
             <div className="mb-6">
-              <p className="text-sm font-medium mb-3">Envoyer les notifications :</p>
               <OrderNotification
                 order={{
                   buyer_name: form.buyer_name,
                   buyer_phone: form.buyer_phone,
                   buyer_region: form.buyer_region,
                   buyer_address: form.buyer_address,
-                  items: items.length > 0 ? items : [{ name: "Produit commandé", quantity: 1, price: total, emoji: "📦" }],
+                  items: [{ name: "Produit commandé", quantity: 1, price: total, emoji: "📦" }],
                   total_price: total,
                   payment_method: form.payment_method,
                 }}

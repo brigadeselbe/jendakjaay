@@ -17,6 +17,8 @@ interface Product {
   seller_name: string;
   seller_location: string;
   seller_region: string;
+  seller_phone: string | null;
+  wave_merchant_url: string | null;
   category: string;
   emoji: string;
   badge: string | null;
@@ -237,6 +239,8 @@ export default function ProductGrid({ selectedCategory = "Tous", filters }: Prod
       price: product.price,
       emoji: product.emoji,
       seller: product.seller_name,
+      seller_phone: product.seller_phone ?? undefined,
+      wave_merchant_url: product.wave_merchant_url ?? undefined,
     });
     setAdded((prev) => [...prev, product.id]);
     setTimeout(() => {
