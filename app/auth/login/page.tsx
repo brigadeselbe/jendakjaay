@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import Header from "@/components/Header";
@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -33,7 +34,8 @@ export default function LoginPage() {
         password: form.password,
       });
       if (error) throw error;
-      router.push("/seller/dashboard");
+      const redirect = searchParams.get("redirect") ?? "/seller/dashboard";
+      router.push(redirect);
     } catch {
       setError("Email ou mot de passe incorrect !");
     } finally {
