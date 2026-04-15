@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Package, Phone, MapPin, Clock, Check, X } from "lucide-react";
+import { ArrowLeft, Package, Phone, MapPin, Clock, X } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -53,6 +53,47 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
   annule: { label: "Annulé", color: "text-red-700", bg: "bg-red-100" },
 };
 
+// Timeline des statuts
+const STATUS_STEPS = ["en_attente", "confirme", "en_livraison", "livre"];
+
+function OrderTimeline({ status }: { status: string }) {
+  if (status === "annule") {
+    return (
+      <div className="flex items-center gap-2 text-red-500 text-sm font-medium py-2">
+        <X className="h-4 w-4" /> Commande annulée
+      </div>
+    );
+  }
+  const currentIndex = STATUS_STEPS.indexOf(status);
+  const labels = ["Reçue", "Confirmée", "En livraison", "Livrée"];
+  const icons = ["📥", "✅", "🚚", "🎉"];
+  return (
+    <div className="flex items-center gap-1 w-full py-3">
+      {STATUS_STEPS.map((step, i) => {
+        const done = i <= currentIndex;
+        const active = i === currentIndex;
+        return (
+          <div key={step} className="flex items-center flex-1">
+            <div className="flex flex-col items-center gap-1">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${done ? "text-white" : "bg-muted text-muted-foreground"}`}
+                style={done ? { background: "oklch(0.35 0.12 145)" } : {}}>
+                {icons[i]}
+              </div>
+              <span className={`text-xs font-medium ${active ? "text-foreground" : done ? "text-muted-foreground" : "text-muted-foreground/50"}`}>
+                {labels[i]}
+              </span>
+            </div>
+            {i < STATUS_STEPS.length - 1 && (
+              <div className={`flex-1 h-0.5 mx-1 mb-5 rounded transition-all ${i < currentIndex ? "" : "bg-muted"}`}
+                style={i < currentIndex ? { background: "oklch(0.35 0.12 145)" } : {}} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function SellerOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,18 +101,34 @@ export default function SellerOrdersPage() {
   const [selected, setSelected] = useState<Order | null>(null);
 
   useEffect(() => {
-    loadOrders();
-  }, []);
-
-  async function loadOrders() {
     const supabase = createClient();
-    const { data } = await supabase
-      .from("orders")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (data) setOrders(data);
-    setLoading(false);
-  }
+
+    async function loadOrders() {
+      const { data } = await supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (data) setOrders(data);
+      setLoading(false);
+    }
+
+    loadOrders();
+
+    // Mises à jour en temps réel
+    const channel = supabase
+      .channel("orders-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
+        setOrders((prev) => [payload.new as Order, ...prev]);
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, (payload) => {
+        const updated = payload.new as Order;
+        setOrders((prev) => prev.map((o) => o.id === updated.id ? updated : o));
+        setSelected((prev) => prev?.id === updated.id ? updated : prev);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   async function updateStatus(orderId: string, status: string) {
     const supabase = createClient();
@@ -205,6 +262,9 @@ export default function SellerOrdersPage() {
                   <X className="h-4 w-4" />
                 </button>
               </div>
+
+              {/* Timeline statut */}
+              <OrderTimeline status={selected.status} />
 
               {/* Infos acheteur */}
               <div className="bg-muted rounded-xl p-4 mb-4 space-y-2">

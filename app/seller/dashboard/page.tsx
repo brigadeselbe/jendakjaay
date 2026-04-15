@@ -1,11 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Plus, Eye, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Eye, Trash2, BellRing, X } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/client";
+
+interface NewOrderToast {
+  id: string;
+  buyer_name: string;
+  total_price: number;
+  buyer_region: string;
+}
 
 interface Product {
   id: string;
@@ -25,18 +32,23 @@ function formatPrice(price: number) {
 export default function SellerDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toasts, setToasts] = useState<NewOrderToast[]>([]);
+  const [orderCount, setOrderCount] = useState(0);
+
+  function dismissToast(id: string) {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }
 
   useEffect(() => {
     let mounted = true;
+    const supabase = createClient();
 
     async function fetchProducts() {
       try {
-        const supabase = createClient();
         const { data, error } = await supabase
           .from("products")
           .select("*")
           .order("created_at", { ascending: false });
-
         if (error) throw error;
         if (!mounted) return;
         setProducts(Array.isArray(data) ? data : []);
@@ -47,9 +59,45 @@ export default function SellerDashboard() {
       }
     }
 
+    async function fetchOrderCount() {
+      const { count } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true });
+      if (mounted) setOrderCount(count ?? 0);
+    }
+
     fetchProducts();
+    fetchOrderCount();
+
+    // Écoute les nouvelles commandes en temps réel
+    const channel = supabase
+      .channel("new-orders-dashboard")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
+        const order = payload.new as NewOrderToast;
+        setOrderCount((c) => c + 1);
+        setToasts((prev) => [...prev, order]);
+
+        // Notification navigateur si permission accordée
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+          new Notification("🛍️ Nouvelle commande !", {
+            body: `${order.buyer_name} — ${order.total_price.toLocaleString("fr-SN")} FCFA (${order.buyer_region})`,
+            icon: "/icon-192.png",
+          });
+        }
+
+        // Auto-dismiss après 8 secondes
+        setTimeout(() => dismissToast(order.id), 8000);
+      })
+      .subscribe();
+
+    // Demander la permission de notification navigateur
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
     return () => {
       mounted = false;
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -69,6 +117,33 @@ export default function SellerDashboard() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
+
+      {/* Toasts nouvelles commandes */}
+      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-3 max-w-sm w-full">
+        {toasts.map((toast) => (
+          <div key={toast.id} className="bg-card border border-border rounded-2xl shadow-xl p-4 flex items-start gap-3 animate-fade-in-up">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0"
+              style={{ background: "oklch(0.35 0.12 145)" }}>
+              <BellRing className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm">🛍️ Nouvelle commande !</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {toast.buyer_name} — {toast.total_price.toLocaleString("fr-SN")} FCFA
+              </p>
+              <p className="text-xs text-muted-foreground">{toast.buyer_region}</p>
+              <Link href="/orders" className="text-xs font-medium mt-1 inline-block"
+                style={{ color: "oklch(0.35 0.12 145)" }}>
+                Voir la commande →
+              </Link>
+            </div>
+            <button onClick={() => dismissToast(toast.id)} className="p-1 hover:bg-accent rounded-lg transition flex-shrink-0">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+
       <main className="flex-1 container mx-auto px-4 py-8">
 
         {/* Header dashboard */}
@@ -101,7 +176,7 @@ export default function SellerDashboard() {
             { label: "Produits", value: products.length, emoji: "📦" },
             { label: "En stock", value: products.filter((p) => p.in_stock).length, emoji: "✅" },
             { label: "Vues", value: "—", emoji: "👁️" },
-            { label: "Commandes", value: "—", emoji: "🛒" },
+            { label: "Commandes", value: orderCount, emoji: "🛒" },
           ].map((stat) => (
             <div key={stat.label} className="bg-card border border-border rounded-xl p-4 text-center">
               <div className="text-2xl mb-1">{stat.emoji}</div>

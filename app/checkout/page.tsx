@@ -189,14 +189,48 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* Orange / Free Money */}
-            {!isWave && (
-              <div className="bg-muted rounded-xl p-4 mb-6 text-sm text-left space-y-2">
-                <p>📱 Vous serez contacté sur <strong>{form.buyer_phone}</strong></p>
-                <p>📍 Livraison à <strong>{form.buyer_address}, {form.buyer_region}</strong></p>
-                <p>💳 Paiement par <strong>{form.payment_method === "orange" ? "Orange Money" : "Free Money"}</strong></p>
-              </div>
-            )}
+            {/* Orange / Free Money — instructions étape par étape */}
+            {!isWave && (() => {
+              const isOrange = form.payment_method === "orange";
+              const merchantPhone = isOrange
+                ? process.env.NEXT_PUBLIC_ORANGE_MERCHANT_PHONE
+                : process.env.NEXT_PUBLIC_FREE_MERCHANT_PHONE;
+              const ref = orderId ? orderId.slice(0, 8).toUpperCase() : "—";
+              return (
+                <div className="mb-6 text-left space-y-3">
+                  <p className="text-sm font-semibold text-center">
+                    {isOrange ? "🟠 Paiement Orange Money" : "🔵 Paiement Free Money"}
+                  </p>
+                  <div className="bg-muted rounded-xl p-4 space-y-3 text-sm">
+                    <div className="flex items-start gap-3">
+                      <span className="w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+                      <p>Ouvrez votre application <strong>{isOrange ? "Orange Money" : "Free Money"}</strong></p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+                      <p>Envoyez <strong className="text-lg">{total.toLocaleString("fr-SN")} FCFA</strong> au numéro :</p>
+                    </div>
+                    <div className="flex items-center justify-between bg-background rounded-xl px-4 py-3 border border-border">
+                      <span className="font-mono font-bold text-lg">{merchantPhone ?? "—"}</span>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(merchantPhone ?? "")}
+                        className="text-xs px-3 py-1 rounded-lg border border-border hover:bg-accent transition"
+                      >
+                        Copier
+                      </button>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
+                      <p>Dans le message, écrivez la référence : <strong className="font-mono">{ref}</strong></p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center text-xs font-bold flex-shrink-0">4</span>
+                      <p>Votre commande sera confirmée dès réception du paiement.</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="mb-6">
               <OrderNotification
