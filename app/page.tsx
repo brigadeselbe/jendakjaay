@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import CategoryNav from "@/components/CategoryNav";
@@ -52,7 +52,9 @@ export default function HomePage() {
               </div>
               {/* Produits */}
               <div className="flex-1 min-w-0">
-                <ProductGrid selectedCategory={selectedCategory} filters={filters} />
+                <Suspense fallback={<div className="text-center py-12 text-muted-foreground">Chargement...</div>}>
+                  <ProductGrid selectedCategory={selectedCategory} filters={filters} />
+                </Suspense>
               </div>
             </div>
           </div>
