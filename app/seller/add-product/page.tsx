@@ -153,6 +153,10 @@ export default function AddProductPage() {
       alert("Veuillez remplir tous les champs obligatoires !");
       return;
     }
+    if (!form.wave_merchant_url || !form.wave_merchant_url.startsWith("https://pay.wave.com/")) {
+      alert("⚠️ L'URL Wave marchand est obligatoire pour recevoir les paiements.\n\nFormat attendu :\nhttps://pay.wave.com/m/M_sn_.../c/sn/\n\n📱 Ouvrez Wave → Mon QR Code → Copier le lien marchand");
+      return;
+    }
     setLoading(true);
     try {
       const supabase = createClient();
@@ -258,12 +262,19 @@ export default function AddProductPage() {
             </div>
             <div>
               <label className="text-sm font-medium mb-1 block">
-                Lien Wave Marchand
-                <span className="ml-2 text-xs font-normal text-muted-foreground">(pour recevoir les paiements directement)</span>
+                Lien Wave Marchand <span className="text-red-500">*</span>
+                <span className="ml-2 text-xs font-normal text-muted-foreground">(obligatoire pour recevoir les paiements)</span>
               </label>
               <input name="wave_merchant_url" value={form.wave_merchant_url} onChange={handleChange}
                 placeholder="https://pay.wave.com/m/M_sn_.../c/sn/"
-                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                className={`w-full px-4 py-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring ${
+                  form.wave_merchant_url && !form.wave_merchant_url.startsWith("https://pay.wave.com/")
+                    ? "border-red-400 focus:ring-red-300"
+                    : "border-border"
+                }`} />
+              {form.wave_merchant_url && !form.wave_merchant_url.startsWith("https://pay.wave.com/") && (
+                <p className="text-xs text-red-500 mt-1">⚠️ URL invalide — doit commencer par https://pay.wave.com/</p>
+              )}
               <p className="text-xs text-muted-foreground mt-1">
                 📱 Ouvrez Wave → Mon QR Code → Copier le lien marchand
               </p>

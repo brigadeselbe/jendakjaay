@@ -35,8 +35,14 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // --- Protection /seller/dashboard, /seller/messages, /seller/stats ---
-  const sellerProtected = ["/seller/dashboard", "/seller/messages", "/seller/stats", "/seller/add-product"];
+  // --- Protection pages vendeur + gestion commandes ---
+  const sellerProtected = [
+    "/seller/dashboard",
+    "/seller/messages",
+    "/seller/stats",
+    "/seller/add-product",
+    "/orders",
+  ];
   if (sellerProtected.some((path) => pathname.startsWith(path))) {
     if (!user) {
       return NextResponse.redirect(new URL(`/auth/login?redirect=${pathname}`, request.url));
@@ -47,5 +53,13 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/seller/dashboard/:path*", "/seller/messages/:path*", "/seller/stats/:path*", "/seller/add-product/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/seller/dashboard/:path*",
+    "/seller/messages/:path*",
+    "/seller/stats/:path*",
+    "/seller/add-product/:path*",
+    "/orders/:path*",
+    "/orders",
+  ],
 };
