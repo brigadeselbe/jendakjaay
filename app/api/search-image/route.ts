@@ -1,5 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const GEMINI_KEY = process.env.GEMINI_API_KEY!;
+
+// Génère un embedding texte via Google text-embedding-004
+async function getTextEmbedding(text: string): Promise<number[] | null> {
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "models/text-embedding-004",
+          content: { parts: [{ text }] },
+        }),
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.embedding?.values ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Identifie l'objet dans l'image via Gemini Vision
+async function identifyImage(image: string, mediaType: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            role: "user",
+            parts: [
+              { inline_data: { mime_type: mediaType, data: image } },
+              { text: "Identifie en 5 mots maximum l'objet ou produit principal visible dans cette image. Réponds uniquement avec le nom de l'objet, en français, sans ponctuation." },
+            ],
+          }],
+          generationConfig: { maxOutputTokens: 50, temperature: 0.1 },
+        }),
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const parts: Array<{ text?: string; thought?: boolean }> = data.candidates?.[0]?.content?.parts ?? [];
+    return parts.filter((p) => !p.thought && p.text).map((p) => p.text).join("").trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { image, media_type, products } = await request.json();
@@ -10,84 +63,86 @@ export async function POST(request: NextRequest) {
 
     const safeMediaType =
       ["image/jpeg", "image/png", "image/gif", "image/webp"].includes(media_type)
-        ? media_type
-        : "image/jpeg";
+        ? media_type : "image/jpeg";
 
-    const productList = (products ?? [])
-      .map((p: { id: string; name: string; category: string }) =>
-        `- ID: ${p.id} | Nom: ${p.name} | Catégorie: ${p.category}`
-      )
-      .join("\n");
+    // 1. Identifier l'objet dans l'image
+    const detected = await identifyImage(image, safeMediaType);
+    if (!detected) {
+      return NextResponse.json({ error: "Impossible d'analyser l'image" }, { status: 502 });
+    }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{
-            role: "user",
-            parts: [
-              {
-                inline_data: {
-                  mime_type: safeMediaType,
-                  data: image,
-                },
-              },
-              {
-                text: `Tu es un assistant de recherche de produits pour Jënd ak Jaay, marketplace sénégalaise.
+    // 2. Générer l'embedding du texte détecté
+    const embedding = await getTextEmbedding(detected);
 
-Analyse cette image et identifie l'objet ou produit principal visible.
+    let matchedIds: string[] = [];
 
-Produits disponibles sur le site :
-${productList || "Aucun produit disponible"}
+    if (embedding) {
+      // 3a. Recherche vectorielle via Supabase
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-Réponds UNIQUEMENT avec ce JSON (sans markdown, sans texte avant/après) :
-{"detected":"nom de l'objet vu","category":"catégorie correspondante","matches":["id1","id2","id3"]}
-
-Si aucun produit ne correspond exactement, mets les IDs les plus proches par catégorie.
-Si la liste est vide, mets matches:[].`,
-              },
-            ],
-          }],
-          generationConfig: {
-            maxOutputTokens: 600,
-            temperature: 0.2,
+        const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/match_products`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
           },
-        }),
+          body: JSON.stringify({ query_embedding: embedding, match_count: 8 }),
+        });
+
+        if (rpcRes.ok) {
+          const vectorResults = await rpcRes.json();
+          matchedIds = (vectorResults as Array<{ id: string; similarity: number }>)
+            .filter((r) => r.similarity > 0.5)
+            .map((r) => r.id);
+        }
+      } catch {
+        // Fallback si la recherche vectorielle échoue
       }
-    );
-
-    if (!response.ok) {
-      const errBody = await response.json().catch(() => ({}));
-      console.error("Gemini API error:", response.status, errBody);
-      return NextResponse.json({ error: "Erreur API image" }, { status: 502 });
     }
 
-    const data = await response.json();
+    // 3b. Fallback textuel si pas de résultats vectoriels
+    if (matchedIds.length === 0 && products?.length > 0) {
+      const productList = (products as Array<{ id: string; name: string; category: string }>)
+        .map((p) => `- ID: ${p.id} | Nom: ${p.name} | Catégorie: ${p.category}`)
+        .join("\n");
 
-    // Gemini 2.5 flash peut retourner plusieurs parts (dont des "pensées")
-    // On cherche la première part qui contient du JSON
-    const parts: Array<{ text?: string; thought?: boolean }> =
-      data.candidates?.[0]?.content?.parts ?? [];
-    const rawText = parts
-      .filter((p) => !p.thought && p.text)
-      .map((p) => p.text)
-      .join("") || "{}";
+      const fallbackRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              role: "user",
+              parts: [{
+                text: `Objet détecté: "${detected}"\n\nProduits disponibles:\n${productList}\n\nRéponds UNIQUEMENT avec ce JSON (sans markdown):\n{"matches":["id1","id2","id3"]}\n\nMets les IDs des produits les plus similaires à l'objet détecté.`,
+              }],
+            }],
+            generationConfig: { maxOutputTokens: 300, temperature: 0.1 },
+          }),
+        }
+      );
 
-    console.log("Gemini image raw response:", rawText.slice(0, 300));
-
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("Réponse IA non JSON:", rawText);
-      return NextResponse.json({ error: "Réponse IA invalide" }, { status: 502 });
+      if (fallbackRes.ok) {
+        const fallbackData = await fallbackRes.json();
+        const fallbackParts: Array<{ text?: string; thought?: boolean }> =
+          fallbackData.candidates?.[0]?.content?.parts ?? [];
+        const rawText = fallbackParts.filter((p) => !p.thought && p.text).map((p) => p.text).join("") || "{}";
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const result = JSON.parse(jsonMatch[0]);
+          matchedIds = result.matches ?? [];
+        }
+      }
     }
 
-    const result = JSON.parse(jsonMatch[0]);
-    return NextResponse.json(result);
+    return NextResponse.json({ detected, matches: matchedIds });
+
   } catch (err) {
     console.error("search-image error:", err);
-    const message = err instanceof Error ? err.message : "Erreur inconnue";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }

@@ -43,41 +43,51 @@ Aide aussi les vendeurs à publier leurs produits.
 Réponds de manière courte et utile, maximum 3-4 phrases.`;
 
     // Convertir les messages au format Gemini (role "assistant" → "model")
-    const geminiContents = messages.map((m: { role: string; content: string }) => ({
+    // Gemini exige que le premier message soit toujours "user"
+    const allContents = messages.map((m: { role: string; content: string }) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }],
     }));
+    const firstUserIdx = allContents.findIndex((m: { role: string }) => m.role === "user");
+    const geminiContents = firstUserIdx >= 0 ? allContents.slice(firstUserIdx) : allContents;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: system ?? defaultSystem }],
-          },
-          contents: geminiContents,
-          generationConfig: {
-            maxOutputTokens: 1000,
-            temperature: 0.7,
-          },
-        }),
+    const MODELS = ["gemini-2.0-flash", "gemini-1.5-flash"];
+    let text = "";
+
+    for (const model of MODELS) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(15000),
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: system ?? defaultSystem }],
+            },
+            contents: geminiContents,
+            generationConfig: {
+              maxOutputTokens: 1000,
+              temperature: 0.7,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        console.error(`Gemini ${model} error:`, JSON.stringify(err));
+        continue;
       }
-    );
 
-    if (!response.ok) {
-      const err = await response.json();
-      console.error("Gemini API error:", err);
-      return NextResponse.json(err, { status: response.status });
+      const data = await response.json();
+      const parts: Array<{ text?: string; thought?: boolean }> = data.candidates?.[0]?.content?.parts ?? [];
+      text = parts.filter((p) => !p.thought && p.text).map((p) => p.text).join("").trim();
+      if (text) break;
     }
 
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "Désolé, je n'ai pas pu répondre.";
-
-    // Retourner dans le même format qu'avant pour que ChatBot.tsx fonctionne
     return NextResponse.json({
-      content: [{ type: "text", text }],
+      content: [{ type: "text", text: text || "Désolé, je n'ai pas pu répondre. Réessayez !" }],
     });
   } catch (e) {
     console.error("Chat route error:", e);
