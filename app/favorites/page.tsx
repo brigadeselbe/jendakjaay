@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Heart, ShoppingCart, ArrowLeft } from "lucide-react";
+import { Heart, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import BackButton from "@/components/BackButton";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { useCart } from "@/contexts/CartContext";
 import { createClient } from "@/lib/supabase/client";
@@ -86,9 +87,7 @@ export default function FavoritesPage() {
       <main className="flex-1 container mx-auto px-4 py-8">
 
         <div className="flex items-center gap-4 mb-8">
-          <Link href="/" className="p-2 rounded-lg hover:bg-accent transition">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+          <BackButton />
           <div>
             <h1 className="text-2xl font-bold">Mes Favoris</h1>
             <p className="text-muted-foreground text-sm">{favorites.length} produit{favorites.length > 1 ? "s" : ""} sauvegardé{favorites.length > 1 ? "s" : ""}</p>

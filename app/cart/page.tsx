@@ -1,10 +1,11 @@
 "use client";
 
-import { Trash2, ShoppingBag, ArrowLeft, Plus, Minus } from "lucide-react";
+import { Trash2, ShoppingBag, Plus, Minus } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/contexts/CartContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import BackButton from "@/components/BackButton";
 
 function formatPrice(price: number) {
   return price.toLocaleString("fr-SN") + " FCFA";
@@ -43,9 +44,7 @@ export default function CartPage() {
 
         {/* Titre */}
         <div className="flex items-center gap-4 mb-8">
-          <Link href="/" className="p-2 rounded-lg hover:bg-accent transition">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+          <BackButton />
           <h1 className="text-2xl font-bold">Mon Panier</h1>
           <span
             className="text-white text-sm font-medium px-2 py-0.5 rounded-full"

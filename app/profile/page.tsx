@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { User, ShoppingBag, Heart, Settings, ArrowLeft, Phone, MapPin, Package } from "lucide-react";
+import { Phone, MapPin } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import BackButton from "@/components/BackButton";
 import { createClient } from "@/lib/supabase/client";
 
 interface Order {
@@ -84,10 +85,7 @@ export default function ProfilePage() {
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8 max-w-3xl">
 
-        <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6 transition-colors">
-          <ArrowLeft className="h-4 w-4" />
-          Retour
-        </Link>
+        <BackButton className="mb-6" />
 
         {/* Header profil */}
         <div className="bg-card border border-border rounded-2xl p-6 mb-6">

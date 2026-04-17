@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Package, Phone, MapPin, Clock, X } from "lucide-react";
+import { Package, Phone, MapPin, Clock, X } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import BackButton from "@/components/BackButton";
+import { YangoDeliveryCard } from "@/components/YangoWidget";
 import { createClient } from "@/lib/supabase/client";
 
 interface OrderItem {
@@ -165,9 +167,7 @@ export default function SellerOrdersPage() {
       <main className="flex-1 container mx-auto px-4 py-8">
 
         <div className="flex items-center gap-4 mb-8">
-          <Link href="/seller/dashboard" className="p-2 rounded-lg hover:bg-accent transition">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+          <BackButton href="/seller/dashboard" />
           <h1 className="text-2xl font-bold">Commandes reçues</h1>
         </div>
 
@@ -381,33 +381,42 @@ export default function SellerOrdersPage() {
                   ))}
                 </div>
 
-                {/* Champ lien de suivi — s'affiche quand on clique "En livraison" */}
+                {/* Section Yango + lien de suivi */}
                 {showTrackingInput && (
-                  <div className="mt-3 space-y-2 bg-muted rounded-xl p-3">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      🚗 Colle le lien de suivi Yango (optionnel) :
-                    </p>
-                    <input
-                      type="url"
-                      value={trackingInput}
-                      onChange={(e) => setTrackingInput(e.target.value)}
-                      placeholder="https://yango.com/tracking/..."
-                      className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  <div className="mt-3 space-y-3">
+                    {/* Widget Yango pour réserver un chauffeur */}
+                    <YangoDeliveryCard
+                      buyerAddress={`${selected.buyer_address}, ${selected.buyer_region}`}
+                      buyerName={selected.buyer_name}
                     />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => updateStatus(selected.id, "en_livraison", trackingInput || undefined)}
-                        className="flex-1 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition"
-                        style={{ background: "oklch(0.35 0.12 145)" }}
-                      >
-                        Confirmer
-                      </button>
-                      <button
-                        onClick={() => { setShowTrackingInput(false); setTrackingInput(""); }}
-                        className="px-4 py-2 rounded-lg text-sm border border-border hover:bg-accent transition"
-                      >
-                        Annuler
-                      </button>
+
+                    {/* Champ lien de suivi */}
+                    <div className="bg-muted rounded-xl p-3 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        📋 Après réservation, colle le lien de suivi ici (optionnel) :
+                      </p>
+                      <input
+                        type="url"
+                        value={trackingInput}
+                        onChange={(e) => setTrackingInput(e.target.value)}
+                        placeholder="https://yango.com/tracking/..."
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => updateStatus(selected.id, "en_livraison", trackingInput || undefined)}
+                          className="flex-1 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition"
+                          style={{ background: "oklch(0.35 0.12 145)" }}
+                        >
+                          ✅ Confirmer en livraison
+                        </button>
+                        <button
+                          onClick={() => { setShowTrackingInput(false); setTrackingInput(""); }}
+                          className="px-4 py-2 rounded-lg text-sm border border-border hover:bg-accent transition"
+                        >
+                          Annuler
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

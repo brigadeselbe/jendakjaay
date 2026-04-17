@@ -1,5 +1,7 @@
+"use client";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import { YangoBadge } from "@/components/YangoWidget";
 
 export default function Footer() {
   return (
@@ -74,6 +76,11 @@ export default function Footer() {
                 <span className="bg-background border border-border px-2.5 py-1.5 rounded-lg font-medium">🟠 Orange</span>
                 <span className="bg-background border border-border px-2.5 py-1.5 rounded-lg font-medium">🔵 Free</span>
               </div>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-xs font-semibold mb-2 text-foreground">Livraison partenaire</p>
+              <YangoBadge />
             </div>
           </div>
         </div>
