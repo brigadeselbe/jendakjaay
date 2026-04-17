@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import React, { useState } from "react";
 import { Phone, MapPin } from "lucide-react";
 import Link from "next/link";

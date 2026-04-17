@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Heart, ShoppingCart, Star, ArrowLeft, Share2, Shield, Truck, RotateCcw } from "lucide-react";

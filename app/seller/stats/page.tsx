@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect } from "react";
 import { ArrowLeft, TrendingUp, Eye, ShoppingBag, Star, Package } from "lucide-react";
 import Link from "next/link";
